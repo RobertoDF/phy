@@ -131,7 +131,7 @@ def readTrodesExtractedDataFile(filename):
         fieldsText.update({'data': data})
         return fieldsText
 
-timestamps_dict = readTrodesExtractedDataFile(Path(*current_dir.parts[:-3]) /f"{current_dir.parts[-4].split('.rec')[0]}.timestamps.dat")
+timestamps_dict = readTrodesExtractedDataFile(Path(*current_dir.parts[:-3])//f"{current_dir.parts[-4].split('.rec')[0]}.time" /f"{current_dir.parts[-4].split('.rec')[0]}.timestamps.dat")
 timestamps = timestamps_dict["data"]["time"]
 times = timestamps/float(timestamps_dict["clockrate"])
 
