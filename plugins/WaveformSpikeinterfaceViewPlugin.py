@@ -47,7 +47,7 @@ class WaveformSpikeinterfaceView(ManualClusteringView):
 # Get the current working directory
 current_dir = Path(os.getcwd())
 
-analyzer_path = Path(*current_dir.parts[:-1]) / "analyzer"
+analyzer_path = Path(*current_dir.parts[:-1]) / "sorting_analyzer"
 
 class WaveformSpikeinterfaceViewPlugin(IPlugin):
     def attach_to_controller(self, controller):
