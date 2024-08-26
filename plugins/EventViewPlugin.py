@@ -131,7 +131,12 @@ def readTrodesExtractedDataFile(filename):
         fieldsText.update({'data': data})
         return fieldsText
 
-timestamps_dict = readTrodesExtractedDataFile(Path(*current_dir.parts[:-3])//f"{current_dir.parts[-4].split('.rec')[0]}.time" /f"{current_dir.parts[-4].split('.rec')[0]}.timestamps.dat")
+
+try:
+    timestamps_dict = readTrodesExtractedDataFile(Path(*current_dir.parts[:-3])/f"{current_dir.parts[-4].split('.rec')[0]}.time" /f"{current_dir.parts[-4].split('.rec')[0]}.timestamps.dat")
+except FileNotFoundError:
+    print(".time Folder missing")
+
 timestamps = timestamps_dict["data"]["time"]
 times = timestamps/float(timestamps_dict["clockrate"])
 
@@ -139,6 +144,7 @@ sorting_path = Path(*current_dir.parts[:-1]) / "sorter_output"
 sorting = read_phy(sorting_path)# This should work even if phy was not used
 
 spike_times = {}
+print("Extract spike times")
 for unit_id in tqdm(sorting.unit_ids):
     spike_times[unit_id] = times[sorting.get_unit_spike_train(unit_id=unit_id)]
 
