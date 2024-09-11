@@ -1,3 +1,4 @@
+
 from phy import IPlugin
 from phy.cluster.views import ManualClusteringView  # Base class for phy views
 from phy.plot.plot import PlotCanvasMpl  # matplotlib canvas
@@ -146,12 +147,17 @@ sorting = read_phy(sorting_path)# This should work even if phy was not used
 spike_times = {}
 print("Extract spike times")
 for unit_id in tqdm(sorting.unit_ids):
-    spike_times[unit_id] = times[sorting.get_unit_spike_train(unit_id=unit_id)]
+    spike_train = sorting.get_unit_spike_train(unit_id=unit_id)
+    valid_indices = spike_train[spike_train < len(times)]  #sometimes out of bond spiketimes
+    spike_times[unit_id] = times[valid_indices]
 
 class EventViewPlugin(IPlugin):
     def attach_to_controller(self, controller):
         def create_event_view():
             """A function that creates and returns a view."""
-            return EventView(c=controller, trials=trials, spike_times=spike_times)
+            try:
+                return EventView(c=controller, trials=trials, spike_times=spike_times)
+            except:
+                print(("Can´t add EventViewPlugin, chill out phy still works :)")
 
         controller.view_creator['EventView'] = create_event_view
