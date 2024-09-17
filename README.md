@@ -1,3 +1,17 @@
+phy_config file should look like:
+
+from phy import IPlugin
+
+
+class MyPlugin(IPlugin):
+    def attach_to_controller(self, controller):
+        print("Hello world!")
+
+c = get_config()
+c.Plugins.dirs = [r'C:\Users\SciencePerson\.phy\plugins']
+
+c.TemplateGUI.plugins = ["WaveformSpikeinterfaceViewPlugin", "EventViewPlugin"]
+
 # phy: interactive visualization and manual spike sorting of large-scale ephys data
 
 [![Install and Test with Pip](https://github.com/cortex-lab/phy/actions/workflows/python-test.yml/badge.svg)](https://github.com/cortex-lab/phy/actions/workflows/python-test.yml)
