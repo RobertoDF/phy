@@ -1,4 +1,4 @@
-phy_config file should look like:
+phy_config.py file should look like:
 
 from phy import IPlugin
 
