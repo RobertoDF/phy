@@ -158,6 +158,6 @@ class EventViewPlugin(IPlugin):
             try:
                 return EventView(c=controller, trials=trials, spike_times=spike_times)
             except:
-                print(("Can´t add EventViewPlugin, chill out phy still works :)")
+                print("Can´t add EventViewPlugin, chill out phy still works :)")
 
         controller.view_creator['EventView'] = create_event_view
