@@ -56,7 +56,7 @@ class WaveformSpikeinterfaceViewPlugin(IPlugin):
             try:
                 return WaveformSpikeinterfaceView(analyzer=load_sorting_analyzer(analyzer_path))
             except:
-                print(("Can´t add WaveformSpikeinterfaceView, chill out phy still works :)")
+                print("Can´t add WaveformSpikeinterfaceView, chill out phy still works :)")
 
 
         controller.view_creator['WaveformSpikeinterfaceView'] = create_waveform_view
