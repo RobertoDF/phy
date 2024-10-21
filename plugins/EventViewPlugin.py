@@ -22,7 +22,7 @@ class EventView(ManualClusteringView):
         self.controller = c
         self.model = c.model
         self.confidence_start_times = trials.query("stimulus_name == 'Detection Confidence'")[
-            ["wait_cin", "stimulus_start_time", "response_time", "reward_start_time"]].reset_index(drop=True)
+            ["wait_cin", "stimulus_start_time", "choice_time", "reward_start_time"]].reset_index(drop=True)
         self.aud_stim_start = trials.query("stimulus_name == 'Auditory Tuning'")["stimulus_start_time"].rename("pure_tone_start_time")
         self.spike_times = spike_times
         self.window = (1, 2)# window psth
@@ -47,7 +47,7 @@ class EventView(ManualClusteringView):
             df = pd.concat([self.calc_hists(sp, self.aud_stim_start, self.window,  self.binsize),
                    self.calc_hists(sp, self.confidence_start_times["wait_cin"], self.window,  self.binsize),
                    self.calc_hists(sp, self.confidence_start_times["stimulus_start_time"],  self.window,  self.binsize),
-                   self.calc_hists(sp, self.confidence_start_times["response_time"],  self.window,  self.binsize),
+                   self.calc_hists(sp, self.confidence_start_times["choice_time"],  self.window,  self.binsize),
                    self.calc_hists(sp, self.confidence_start_times["reward_start_time"],  self.window,  self.binsize)
                    ], axis=1)
             df.index.name = "Time (s)"
@@ -62,13 +62,16 @@ class EventView(ManualClusteringView):
         return
 
     def calc_hists(self, spike_times, stim_start, window, binsize):
-        start = np.searchsorted(spike_times, stim_start - window[0])
-        end = np.searchsorted(spike_times, stim_start + window[1])
-        count, bins = np.histogram(
-            np.concatenate([spike_times[start[i]:end[i]] - stim_start[i] for i in range(len(start))]),
-            bins=np.arange(-window[0], window[1], binsize))
-        return pd.Series(count, name=stim_start.name, index=bins[:-1])/len(stim_start)
-
+        if stim_start.shape[0]>0:
+            start = np.searchsorted(spike_times, stim_start - window[0])
+            end = np.searchsorted(spike_times, stim_start + window[1])
+            count, bins = np.histogram(
+                np.concatenate([spike_times[start[i]:end[i]] - stim_start[i] for i in range(len(start))]),
+                bins=np.arange(-window[0], window[1], binsize))
+            return pd.Series(count, name=stim_start.name, index=bins[:-1])/len(stim_start)
+        else:
+            return pd.Series()
+            
 current_dir = Path(os.getcwd())
 
 trials_path = Path(*current_dir.parts[:-3]) / "trials.csv"
