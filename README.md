@@ -1,4 +1,5 @@
 in phy env 
+
 `pip install seaborn spikeinterface`
 
 
