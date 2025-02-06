@@ -1,16 +1,17 @@
+in phy env 
+`pip install seaborn spikeinterface`
+
+
 phy_config.py file should look like:
 
+```
 from phy import IPlugin
 
-
-class MyPlugin(IPlugin):
-    def attach_to_controller(self, controller):
-        print("Hello world!")
-
 c = get_config()
-c.Plugins.dirs = [r'C:\Users\SciencePerson\.phy\plugins']
+c.Plugins.dirs = [r'C:\Users\SciencePerson\.phy\plugins']# change directory!!!
 
 c.TemplateGUI.plugins = ["WaveformSpikeinterfaceViewPlugin", "EventViewPlugin"]
+```
 
 # phy: interactive visualization and manual spike sorting of large-scale ephys data
 
