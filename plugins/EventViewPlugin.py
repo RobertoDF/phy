@@ -73,9 +73,22 @@ class EventView(ManualClusteringView):
             return pd.Series()
             
 current_dir = Path(os.getcwd())
+# Get the parent directory two levels up
+spike_folder = Path(*current_dir.parts[:-2])
+path_recording_folder = Path(*current_dir.parts[:-3])
 
-trials_path = Path(*current_dir.parts[:-3]) / "trials.csv"
-trials = pd.read_csv(Path(trials_path))
+if spike_folder:
+    # Extract the suffix if present (e.g., "_0" from "spike_interface_output_0")
+    suffix = spike_folder.name.replace("spike_interface_output", "")
+    # Construct the trials filename with the same suffix
+    trials_filename = f"trials{suffix}.csv"
+    trials_path = Path(*current_dir.parts[:-3]) / trials_filename
+else:
+    # Fall back to default if no matching folder found
+    trials_path = Path(*current_dir.parts[:-3]) / "trials.csv"
+
+print(trials_path)
+trials = pd.read_csv(trials_path)
 
 
 # Parses last fields parameter (<time uint32><...>) as a single string
@@ -135,14 +148,41 @@ def readTrodesExtractedDataFile(filename):
         fieldsText.update({'data': data})
         return fieldsText
 
+folder_name = spike_folder.name  # "spike_interface_output_0"
+if "_" in folder_name:
+    base, suffix = folder_name.rsplit("_", 1)  # Split on last '_'
+    has_suffix = suffix.isdigit()  # True if suffix is numeric (e.g., "0", "1")
+else:
+    has_suffix = False
 
-try:
-    timestamps_dict = readTrodesExtractedDataFile(Path(*current_dir.parts[:-3])/f"{current_dir.parts[-4].split('.rec')[0]}.time" /f"{current_dir.parts[-4].split('.rec')[0]}.timestamps.dat")
-except FileNotFoundError:
-    print(".time Folder missing")
 
-timestamps = timestamps_dict["data"]["time"]
-times = timestamps/float(timestamps_dict["clockrate"])
+if not has_suffix:
+    try:
+        timestamps_dict = readTrodesExtractedDataFile(Path(*current_dir.parts[:-3])/f"{current_dir.parts[-4].split('.rec')[0]}.analog" /f"{current_dir.parts[-4].split('.rec')[0]}.timestamps.dat")
+    except FileNotFoundError:
+        print(".time Folder missing")
+
+    timestamps = timestamps_dict["data"]["time"]
+    times = timestamps/float(timestamps_dict["clockrate"])
+
+elif has_suffix:
+    probe_n = int(re.findall(r"\d+", Path(*current_dir.parts[:-1]).name)[-1])
+    probe_str = "np2"
+    clock_str = [f'{probe_str}-{probe_id}-clock_{suffix}.raw' for probe_id in ["a", "b"]][probe_n]
+
+
+    dt = {'names': ('time', 'acq_clk_hz', 'block_read_sz', 'block_write_sz'),
+      'formats': ('datetime64[us]', 'u4', 'u4', 'u4')}
+    meta = np.genfromtxt(os.path.join(path_recording_folder, f'start-time_{suffix}.csv'), delimiter=',', dtype=dt, skip_header=1)
+
+    df = pd.read_csv(os.path.join(path_recording_folder, f'start-time_{suffix}.csv')) # we need this because times with ofsets are not parsed properly in numpy
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'].str.replace('\+02:00$', '', regex=True),
+                                 format='%Y-%m-%dT%H:%M:%S.%f')
+
+    meta["time"] = df['Timestamp'].values
+
+    print(os.path.join(path_recording_folder, clock_str))
+    times = np.fromfile(os.path.join(path_recording_folder, clock_str), dtype=np.uint64).astype(np.double) / meta['acq_clk_hz']
 
 sorting_path = Path(*current_dir.parts[:-1]) / "sorter_output"
 sorting = read_phy(sorting_path)# This should work even if phy was not used
