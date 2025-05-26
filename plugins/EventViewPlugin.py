@@ -21,8 +21,15 @@ class EventView(ManualClusteringView):
         super(EventView, self).__init__()
         self.controller = c
         self.model = c.model
+	columns = ["noise_start_time", "stimulus_start_time", "choice_time", "reward_start_time"]
+
+	# Check for missing columns
+	missing_columns = [col for col in columns if col not in trials.columns]
+	if missing_columns:
+    		print(f"Warning: The trials DataFrame is missing the following columns: {missing_columns}")
+
         self.confidence_start_times = trials.query("stimulus_name == 'Detection Confidence'")[
-            ["wait_cin", "stimulus_start_time", "choice_time", "reward_start_time"]].reset_index(drop=True)
+            columns].reset_index(drop=True)
         self.aud_stim_start = trials.query("stimulus_name == 'Auditory Tuning'")["stimulus_start_time"].rename("pure_tone_start_time")
         self.spike_times = spike_times
         self.window = (1, 2)# window psth
@@ -45,7 +52,7 @@ class EventView(ManualClusteringView):
             sp = self.spike_times[d]
 
             df = pd.concat([self.calc_hists(sp, self.aud_stim_start, self.window,  self.binsize),
-                   self.calc_hists(sp, self.confidence_start_times["wait_cin"], self.window,  self.binsize),
+                   self.calc_hists(sp, self.confidence_start_times["noise_start_time"], self.window,  self.binsize),
                    self.calc_hists(sp, self.confidence_start_times["stimulus_start_time"],  self.window,  self.binsize),
                    self.calc_hists(sp, self.confidence_start_times["choice_time"],  self.window,  self.binsize),
                    self.calc_hists(sp, self.confidence_start_times["reward_start_time"],  self.window,  self.binsize)
