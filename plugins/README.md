@@ -10,6 +10,7 @@
 * [ExampleCustomColumnsPlugin](custom_columns.py): Show how to customize the columns in the cluster and similarity views.
 * [ExampleSimilarityPlugin](custom_similarity.py): Show how to add a custom similarity measure.
 * [ExampleCustomSplitPlugin](custom_split.py): Show how to write a custom split action.
+* [EventViewPlugin](EventViewPlugin.py): Plot trial-aligned spike counts using recording clocks and live Phy clusters.
 * [ExampleCustomFeatureViewPlugin](feature_view_custom_grid.py): Show how to customize the subplot grid specification in the feature view.
 * [ExampleFilterFiringRatePlugin](filter_action.py): Show how to create a filter snippet for the cluster view.
 * [ExampleFontSizePlugin](font_size.py): Show how to change the default text font size.
@@ -21,3 +22,4 @@
 * [ExampleRawDataFilterPlugin](raw_data_filter.py): Show how to add a custom raw data filter for the TraceView and Waveform View
 * [ExampleShortcutsPlugin](shortcuts.py): Show how to rebind or disable existing GUI keyboard shortcuts.
 * [ExampleWaveformUMAPPlugin](umap_view.py): Show how to write a custom dimension reduction view.
+* [WaveformSpikeinterfaceViewPlugin](WaveformSpikeinterfaceViewPlugin.py): Display saved analyzer mean waveforms, matched to live Phy spike trains.
