@@ -1,5 +1,7 @@
 # phy plugin examples
 
+* [EventViewPlugin](EventViewPlugin.py): Plot trial-aligned spike counts using recording clocks and live Phy clusters.
+* [WaveformSpikeinterfaceViewPlugin](WaveformSpikeinterfaceViewPlugin.py): Display saved analyzer mean waveforms, matched to live Phy spike trains.
 * [ExampleActionPlugin](action_status_bar.py): Show how to create new actions in the GUI.
 * [ExampleClusterMetadataPlugin](cluster_metadata.py): Show how to save the best channel of every cluster in a cluster_channel.tsv file when saving.
 * [ExampleClusterMetricsPlugin](cluster_metrics.py): Show how to add a custom cluster metrics.

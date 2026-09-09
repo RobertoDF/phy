@@ -25,6 +25,96 @@ The `~/.phy/phy_config` file defines (1) the paths to the plugin directories (`c
 
 The idea is that one could *install* many plugins by putting the code in a plugin directory, but may not want to *activate* all of them every time.
 
+### Recording event and saved-analyzer waveform views
+
+Copy `plugins/EventViewPlugin.py` and/or
+`plugins/WaveformSpikeinterfaceViewPlugin.py` into your plugin directory, then
+include `EventViewPlugin` and/or `WaveformSpikeinterfaceViewPlugin` in
+`c.TemplateGUI.plugins`, preserving any existing entries. Each file is
+self-contained. Do not put backup Python files anywhere under plugin directories:
+discovery imports files recursively. These plugins perform no recording path
+resolution or data loading during discovery. Missing/invalid data at view creation
+logs a warning with the path and exception and skips that optional view.
+
+**EventView data layout.** Launch Phy with its working directory set to
+`<recording>.rec/spike_interface_output[_N]/probeN/sorter_output` (the final
+directory need not be named `phy`). The recording root must contain
+`trials.csv`, or `trials_N.csv` for a suffixed output directory. Required CSV
+columns are `stimulus_name`, `noise_start_time`, `stimulus_start_time`,
+`choice_time`, and `reward_start_time`. Stimulus names match exactly:
+`Auditory Tuning` uses stimulus onset; `Detection Confidence` uses all four
+event-time columns. Event times must be seconds in the acquisition clock's
+coordinate system, not elapsed time relative to the first spike.
+
+Unsuffixed recordings use
+`<recording>.analog/<recording>.timestamps.dat`, with a Trodes settings header,
+scalar `uint32` `time` field, and positive `clockrate`. Suffixed recordings use
+`start-time_N.csv` with one row and positive `acq_clk_hz`, plus `uint64`
+`np2-a-clock_N.raw` for `probe0` or `np2-b-clock_N.raw` for `probe1`.
+Calendar timestamps in start-time metadata are not used to offset the acquisition
+clock. Other suffixed probes are rejected rather than assigned an arbitrary clock.
+No clock unwrapping, sample offsets, or multi-segment alignment is inferred.
+
+The five curves are **counts per trial, not Hz**, using the original -1 to +2
+second search window and `np.arange(-1, 2, 0.01)` histogram edges. In particular,
+the last edge is approximately 1.99 seconds, not 2 seconds; NumPy's final-bin
+right-edge inclusion is preserved. Blank/non-finite event times are reported and
+excluded from that curve's trial denominator; a curve with no finite events is
+left blank. Malformed nonnumeric values reject the view with a diagnostic.
+Valid finite-input results retain the original normalization. Spike samples
+outside the clock array are reported and omitted. Live Phy memberships and
+`model.spike_samples` are used on each selection, including merge/split/undo.
+Integer clocks are memory-mapped and only selected spikes are converted to seconds.
+Histogram accumulation uses bounded chunks rather than concatenating all trials.
+
+**Saved analyzer means.** The waveform plugin requires SpikeInterface (validated
+with 0.104.8) in the same environment as Phy, in addition to Phy's dependencies.
+For a uv-managed environment, install it with
+`uv pip install --python <phy-environment-python> spikeinterface==0.104.8`.
+EventView needs no additional pandas, seaborn, tqdm, or SpikeInterface imports.
+By default, the waveform plugin chooses the sibling `sorting_analyzer_after_phy`
+directory if present, otherwise `sorting_analyzer`. An invalid preferred analyzer
+is reported, not silently replaced by a potentially different fallback.
+
+Set the `PHY_WAVEFORM_ANALYZER` environment variable before launching Phy to
+choose another analyzer. Relative paths are interpreted from Phy's working
+directory. For example, in PowerShell:
+
+```powershell
+$env:PHY_WAVEFORM_ANALYZER = '..\sorting_analyzer_after_phy'
+```
+
+For programmatic controller setup, `controller.waveform_analyzer_path` takes
+precedence over the environment variable. Set it before requesting the view.
+This is a controller attribute, not a built-in `c.TemplateGUI` configuration key.
+
+The analyzer is loaded with `load_extensions=False`; only saved average
+templates, or saved waveforms if averages are unavailable, are requested.
+Saved waveforms are averaged over their stored spikes, with sparse channels
+mapped back to the analyzer channel layout. The plugin never computes or saves
+extensions. Raw `recording.dat`, a Phy `dat_path`, and an analyzer
+`recording.json` are not required. These are analyzer-derived mean waveforms,
+not individual spikes or Phy's rank-reduced sorter templates. Whether the saved
+means represent all spikes or a sampled subset depends on how the analyzer was
+computed. Channel geometry and amplitude units come from that analyzer.
+
+Numeric IDs alone are **not** accepted as proof of unit identity. Matching
+requires one segment, the same sample rate, and a unique exact spike train in
+the same sample coordinate system as the live Phy cluster. Renamed units can
+match; ambiguous, shifted, merged, or split units without an exact saved
+counterpart are logged and omitted. Legends show both Phy and analyzer IDs.
+Undo can restore a match. No approximate matching or waveform averaging across
+unmatched units is performed. Analyzer candidate signatures are cached lazily
+by spike count, with exact equality checked before display; live assignments
+are never cached.
+
+An analyzer is shared between views for a controller session and treated as an
+immutable snapshot. Restart Phy after regenerating an analyzer at the same path.
+Synthetic Agg-backend tests cover startup, clocks, histogram edges, live
+curation, exact matching, and dense/sparse means without recordings. They do not
+establish real-dataset alignment, interactive Qt behavior, or a measured
+end-to-end speedup.
+
 
 ### How to upgrade plugins from phy 1.0
 

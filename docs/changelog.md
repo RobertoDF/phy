@@ -40,6 +40,17 @@ behavior they verify rather than listed separately.
 
 ### Fixed
 
+- Discover the optional Event and SpikeInterface waveform plugins without reading
+  recording files at import time. Missing or invalid data now logs a diagnostic
+  and skips the optional view instead of interrupting startup.
+- EventView uses live cluster assignments after merges, splits, and undo, bounds
+  histogram temporary storage, and reuses plot axes for unchanged selection
+  sizes. It handles nonconsecutive trial rows and reports missing event times.
+- The SpikeInterface waveform plugin displays saved analyzer means without a raw
+  recording, prefers `sorting_analyzer_after_phy`, and matches units by exact
+  spike trains rather than assuming analyzer and Phy cluster IDs are identical.
+  Unmatched or ambiguous units are explicitly omitted.
+
 - Start the GUI with released phylib versions that do not yet expose the
   disjoint-spike selection optimization hint.
 - Keep dataset-local view settings isolated from global GUI state. In
