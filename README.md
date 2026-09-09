@@ -18,131 +18,184 @@ c.TemplateGUI.plugins = ["WaveformSpikeinterfaceViewPlugin", "EventViewPlugin"]
 
 [![Install and Test with Pip](https://github.com/cortex-lab/phy/actions/workflows/python-test.yml/badge.svg)](https://github.com/cortex-lab/phy/actions/workflows/python-test.yml)
 [![codecov.io](https://img.shields.io/codecov/c/github/cortex-lab/phy.svg)](http://codecov.io/github/cortex-lab/phy)
-[![Documentation Status](https://readthedocs.org/projects/phy/badge/?version=latest)](https://phy.readthedocs.io/en/latest/?badge=latest)
+[![Documentation](https://img.shields.io/badge/docs-Read_the_Docs-blue.svg)](https://phy.readthedocs.io/en/latest/)
 [![GitHub release](https://img.shields.io/github/release/cortex-lab/phy.svg)](https://github.com/cortex-lab/phy/releases/latest)
 [![PyPI release](https://img.shields.io/pypi/v/phy.svg)](https://pypi.python.org/pypi/phy)
 
+[**phy**](https://github.com/cortex-lab/phy) is an open-source Python library providing a graphical user interface for visualization and manual curation of large-scale electrophysiological data. It is optimized for high-density multielectrode arrays containing hundreds to thousands of recording sites, especially Neuropixels recordings.
 
-[**phy**](https://github.com/cortex-lab/phy) is an open-source Python library providing a graphical user interface for visualization and manual curation of large-scale electrophysiological data. It is optimized for high-density multielectrode arrays containing hundreds to thousands of recording sites (mostly [Neuropixels probes](https://www.ucl.ac.uk/neuropixels/)).
+> **Current release:** `phy 2.1.0` is a maintenance-focused release that improves installation and GUI reliability on current systems. See the [release notes](https://phy.readthedocs.io/en/latest/release/) for details and compatibility notes.
 
-Phy provides two GUIs:
+[![phy 2.1.0 screenshot](https://user-images.githubusercontent.com/1942359/74028054-c284b880-49a9-11ea-8815-1b7e727a8644.png)](https://user-images.githubusercontent.com/1942359/74028054-c284b880-49a9-11ea-8815-1b7e727a8644.png)
 
-* **Template GUI** (recommended): for datasets sorted with KiloSort and Spyking Circus,
-* **Kwik GUI** (legacy): for datasets sorted with klusta and klustakwik2.
+## Current status
 
+As of July 2026, `phy 2.1.0` is the current stable release for the 2.x line.
 
-[![phy 2.0b1 screenshot](https://user-images.githubusercontent.com/1942359/74028054-c284b880-49a9-11ea-8815-1b7e727a8644.png)](https://user-images.githubusercontent.com/1942359/74028054-c284b880-49a9-11ea-8815-1b7e727a8644.png)
+The main goals of this release are:
 
+* dependency and packaging modernization
+* replacing a fragile legacy web-based GUI component with a Qt-native implementation
+* improving display reliability on modern systems
+* incorporating fixes identified during release-candidate testing
 
-## What's new
-* [5 June 2024] phy 2.0 beta 6, bug fixes, install work, fixing some deprecations
-* [7 Sep 2021] Release of phy 2.0 beta 5, with some install and bug fixes
-* [7 Feb 2020] Release of phy 2.0 beta 1, with many new views, new features, various improvements and bug fixes...
+Dataset formats are unchanged. Some plugins that relied on internal HTML or web-based GUI components may need updates.
 
+Please report any issues or compatibility regressions on [GitHub issues](https://github.com/cortex-lab/phy/issues).
 
-## Links
+## Supported workflows
 
-* [Documentation](http://phy.readthedocs.org/en/latest/)
-* [Mailing list](https://groups.google.com/forum/#!forum/phy-users)
+phy currently provides three main entry points:
 
+* **Template GUI**: the main and recommended workflow for datasets sorted with KiloSort and Spyking Circus
+* **Kwik GUI**: a legacy workflow for datasets sorted with klusta and klustakwik2
+* **Trace GUI**: an experimental raw-data viewer for opening continuous electrophysiology recordings directly
 
-## Hardware requirements
+Current testing and maintenance work is focused on modern Linux, macOS, and Windows environments. Linux is still the best-covered platform.
 
-It is recommanded to store the data on a SSD for performance reasons.
+## Installation
 
-There are no specific GPU requirements as long as relatively recent graphics and OpenGL drivers are installed on the system.
+The recommended installation uses
+[`uv`](https://docs.astral.sh/uv/getting-started/installation/), which installs
+phy and its Python dependencies in an isolated environment:
 
+```bash
+uv tool install --python 3.12 phy
+phy --version
+```
 
-## Installation instructions
+This installs the GUI runtime dependencies as part of the main package.
 
-Run the following commands in a terminal (currently working for Linux machines):
+The legacy Kwik GUI needs a regular virtual environment because one of its
+dependencies requires special build handling. See the installation guide for
+the tested `uv` commands.
 
-1. Create a new conda environment with the conda dependencies:
+See the [installation guide](https://phy.readthedocs.io/en/latest/installation/)
+for instructions to install `uv`, legacy Kwik support, a `venv`/pip alternative,
+source checkouts, and installation verification.
 
-    ```
-    conda create -n phy2 -y python=3.11 cython dask h5py joblib matplotlib numpy pillow pip pyopengl pyqt pyqtwebengine pytest python qtconsole requests responses scikit-learn scipy traitlets
-    ```
+## Quick start
 
-2. Activate the new conda environment with `conda activate phy2`
-
-3. Install the development version of phy: `pip install git+https://github.com/cortex-lab/phy.git`
-
-4. [OPTIONAL] If you plan to use the Kwik GUI, type `pip install klusta klustakwik2`
-
-5. Phy should now be installed. Open the GUI on a dataset as follows (the phy2 environment should still be activated):
+Open the Template GUI on a spike sorting output directory containing `params.py`:
 
 ```bash
 cd path/to/my/spikesorting/output
 phy template-gui params.py
 ```
 
-6. If there are problems with this method we also have an `environment.yml` file which allows for
-automatic install of the necessary packages. Give that a try.
-
-
-### Dealing with the error `ModuleNotFoundError: No module named 'PyQt5.QtWebEngineWidget`
-
-In some environments, you might get an error message related to QtWebEngineWidget. Run the command `pip install PyQtWebEngine` and try launching phy again. This command should not run if the error message doesn't appear, as it could break the PyQt5 installation.
-
-
-### Upgrading from phy 1 to phy 2
-
-* Do not install phy 1 and phy 2 in the same Python environment.
-* It is recommended to delete `~/.phy/*GUI/state.json` when upgrading.
-
-
-### Developer instructions (and instructions for some Windows machines)
-
-To install the development version of phy in a fresh environment, do:
+Other useful commands:
 
 ```bash
-git clone git@github.com:cortex-lab/phy.git
-cd phy
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-pip install -e .
-cd ..
-git clone git@github.com:cortex-lab/phylib.git
-cd phylib
-pip install -e . --upgrade
+phy template-describe params.py
+phy kwik-gui path/to/file.kwik
+phy trace-gui path/to/raw.bin --sample-rate 30000 --dtype int16 --n-channels 384
 ```
 
-### Mac Install
+Before curating your own data, review the
+[dataset requirements](https://phy.readthedocs.io/en/latest/dataset/) and follow
+the [first-ten-minutes guide](https://phy.readthedocs.io/en/latest/quickstart/).
 
-Since the switch to M-series chips Mac install for Phy is not being officially supported.
-Rarely people are able to hack together a version with old versions of python etc.
+## Available GUIs and commands
 
-### Troubleshooting
+### Template GUI
 
-* [See a list of common issues.](https://phy.readthedocs.io/en/latest/troubleshooting/)
-* [Raise a GitHub issue.](https://github.com/cortex-lab/phy/issues)
+Use the Template GUI for current template-based workflows such as KiloSort and Spyking Circus.
 
-
-## Running phy from a Python script
-
-In addition to launching phy from the terminal with the `phy` command, you can also launch it from a Python script or an IPython terminal. This may be useful when debugging or profiling. Here's a code example to copy-paste in a new `launch.py` text file within your data directory:
-
+```bash
+phy template-gui params.py
 ```
+
+To inspect a dataset from the terminal without launching the GUI:
+
+```bash
+phy template-describe params.py
+```
+
+### Kwik GUI
+
+The Kwik GUI is still available for legacy kwik datasets, but it is no longer the primary workflow.
+
+```bash
+phy kwik-gui path/to/file.kwik
+```
+
+### Trace GUI
+
+The Trace GUI is still experimental and opens raw electrophysiology recordings directly.
+
+```bash
+phy trace-gui path/to/raw.bin --sample-rate 30000 --dtype int16 --n-channels 384
+```
+
+## Running phy from Python
+
+You can also launch phy from Python or IPython, which can be useful for debugging or profiling:
+
+```python
 from phy.apps.template import template_gui
+
 template_gui("params.py")
 ```
 
+## Developer setup
+
+For a fresh editable installation using the latest commits of both phylib and phy:
+
+```bash
+mkdir phy-source
+cd phy-source
+
+git clone https://github.com/cortex-lab/phylib.git
+git clone https://github.com/cortex-lab/phy.git
+
+cd phy
+uv sync --dev
+uv pip install --editable ../phylib
+```
+
+Windows PowerShell instructions, update commands, and verification of the exact commits are in the
+[source installation guide](https://phy.readthedocs.io/en/latest/installation/#install-the-latest-phy-and-phylib-source).
+
+## Documentation and help
+
+* [Documentation home](https://phy.readthedocs.io/en/latest/)
+* [Installation](https://phy.readthedocs.io/en/latest/installation/)
+* [Preparing a dataset](https://phy.readthedocs.io/en/latest/dataset/)
+* [First-ten-minutes quickstart](https://phy.readthedocs.io/en/latest/quickstart/)
+* [Using the GUI](https://phy.readthedocs.io/en/latest/gui/)
+* [Performance and spike sampling](https://phy.readthedocs.io/en/latest/performance/)
+* [Changelog](https://phy.readthedocs.io/en/latest/changelog/)
+* [Release notes](https://phy.readthedocs.io/en/latest/release/)
+* [Troubleshooting](https://phy.readthedocs.io/en/latest/troubleshooting/)
+* [GitHub issues](https://github.com/cortex-lab/phy/issues)
+* [Mailing list](https://groups.google.com/forum/#!forum/phy-users)
+* [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## Credits
 
 **phy** is developed and maintained by [Cyrille Rossant](https://cyrille.rossant.net).
 
 * [International Brain Laboratory](https://internationalbrainlab.org)
-* [Cortex Lab (UCL)](https://www.ucl.ac.uk/cortexlab/) ([Kenneth Harris](https://www.ucl.ac.uk/biosciences/people/harris-kenneth) and [Matteo Carandini](https://www.carandinilab.net/)).
+* [Cortex Lab (UCL)](https://www.ucl.ac.uk/cortexlab/) ([Kenneth Harris](https://www.ucl.ac.uk/biosciences/people/harris-kenneth) and [Matteo Carandini](https://www.carandinilab.net/))
 
 Contributors to the repository are:
 
+* Maxime Beau
 * [Alessio Buccino](https://github.com/alejoe91)
+* Thad Czuba
 * [Michael Economo](https://github.com/mswallac)
+* Einsied
 * [Cedric Gestes](https://github.com/cgestes)
-* [Dan Goodman](http://thesamovar.net/)
+* Yaroslav Halchenko
 * [Max Hunter](https://iris.ucl.ac.uk/iris/browse/profile?upi=MLDHU99)
 * [Shabnam Kadir](https://iris.ucl.ac.uk/iris/browse/profile?upi=SKADI56)
+* [Zach McKenzie](https://github.com/zm711)
+* Sam Minkowicz
 * [Christopher Nolan](https://github.com/crnolan)
+* [Jesús Peñaloza](https://github.com/jpenalozaa)
+* [Luke Shaheen](https://github.com/LukeShaheen)
 * [Martin Spacek](http://mspacek.github.io/)
 * [Nick Steinmetz](http://www.nicksteinmetz.com/)
+* Olivier Winter
+* szapp
+* ycanerol

@@ -40,17 +40,17 @@ phy: interactive visualization and manual spike sorting of large-scale ephys dat
 * [phy.gui.screen_size](#phyguiscreen_size)
 * [phy.gui.screenshot](#phyguiscreenshot)
 * [phy.gui.thread_pool](#phyguithread_pool)
+* [phy.gui.view_settings_dialog](#phyguiview_settings_dialog)
 * [phy.gui.Actions](#phyguiactions)
 * [phy.gui.Debouncer](#phyguidebouncer)
 * [phy.gui.DockWidget](#phyguidockwidget)
 * [phy.gui.GUI](#phyguigui)
 * [phy.gui.GUIState](#phyguiguistate)
-* [phy.gui.HTMLBuilder](#phyguihtmlbuilder)
-* [phy.gui.HTMLWidget](#phyguihtmlwidget)
 * [phy.gui.IPythonView](#phyguiipythonview)
 * [phy.gui.KeyValueWidget](#phyguikeyvaluewidget)
 * [phy.gui.Snippets](#phyguisnippets)
 * [phy.gui.Table](#phyguitable)
+* [phy.gui.ViewSettingsDialog](#phyguiviewsettingsdialog)
 * [phy.gui.Worker](#phyguiworker)
 
 
@@ -116,9 +116,7 @@ phy: interactive visualization and manual spike sorting of large-scale ephys dat
 
 * [phy.apps.add_default_handler](#phyappsadd_default_handler)
 * [phy.apps.capture_exceptions](#phyappscapture_exceptions)
-* [phy.apps.contextmanager](#phyappscontextmanager)
 * [phy.apps.exceptionHandler](#phyappsexceptionhandler)
-* [phy.apps.format_exception](#phyappsformat_exception)
 * [phy.apps.BaseController](#phyappsbasecontroller)
 * [phy.apps.FeatureMixin](#phyappsfeaturemixin)
 * [phy.apps.Path](#phyappspath)
@@ -150,7 +148,7 @@ phy: interactive visualization and manual spike sorting of large-scale ephys dat
 
 ## phy.utils
 
-Utilities: plugin system, event system, configuration system, profiling, debugging, cacheing,
+Utilities: plugin system, event system, configuration system, profiling, debugging, caching,
 basic read/write functions.
 
 ---
@@ -735,6 +733,18 @@ thread_pool().start(w)
 
 ---
 
+#### phy.gui.view_settings_dialog
+
+
+**`phy.gui.view_settings_dialog(title, fields, parent=None, validate=None)`**
+
+Show a typed settings dialog and return its values, or ``None`` when cancelled.
+
+``validate`` may return an error message. The dialog remains open until the
+values are valid or the user cancels it.
+
+---
+
 ### phy.gui.Actions
 
 Group of actions bound to a GUI.
@@ -966,6 +976,15 @@ d.trigger()  # show "hello world 0" and "hello world 9" after a delay
 
 ---
 
+#### Debouncer.flush
+
+
+**`Debouncer.flush(self)`**
+
+Synchronously execute all pending actions.
+
+---
+
 #### Debouncer.stop_waiting
 
 
@@ -991,6 +1010,15 @@ is higher than the threshold, or wait until executing it otherwiser.
 **`Debouncer.trigger(self)`**
 
 Execute the pending actions.
+
+---
+
+#### Debouncer.has_pending
+
+
+**`Debouncer.has_pending`**
+
+Whether at least one submitted action has not run yet.
 
 ---
 
@@ -1128,7 +1156,7 @@ A Qt main window containing docking widgets. This class derives from `QMainWindo
     view class.
 
 * `default_views : list-like`
-    List of view names to create by default (overriden by `view_count` if not empty).
+    List of view names to create by default (overridden by `view_count` if not empty).
 
 * `config_dir : str or Path`
     User configuration directory used to load/save the GUI state
@@ -1430,158 +1458,6 @@ Update the state of a view instance.
 
 ---
 
-### phy.gui.HTMLBuilder
-
-Build an HTML widget.
-
----
-
-#### HTMLBuilder.add_header
-
-
-**`HTMLBuilder.add_header(self, s)`**
-
-Add HTML headers.
-
----
-
-#### HTMLBuilder.add_script
-
-
-**`HTMLBuilder.add_script(self, s)`**
-
-Add Javascript code.
-
----
-
-#### HTMLBuilder.add_script_src
-
-
-**`HTMLBuilder.add_script_src(self, filename)`**
-
-Add a link to a Javascript file.
-
----
-
-#### HTMLBuilder.add_style
-
-
-**`HTMLBuilder.add_style(self, s)`**
-
-Add a CSS style.
-
----
-
-#### HTMLBuilder.add_style_src
-
-
-**`HTMLBuilder.add_style_src(self, filename)`**
-
-Add a link to a stylesheet URL.
-
----
-
-#### HTMLBuilder.set_body
-
-
-**`HTMLBuilder.set_body(self, body)`**
-
-Set the HTML body of the widget.
-
----
-
-#### HTMLBuilder.set_body_src
-
-
-**`HTMLBuilder.set_body_src(self, filename)`**
-
-Set the path to an HTML file containing the body of the widget.
-
----
-
-#### HTMLBuilder.html
-
-
-**`HTMLBuilder.html`**
-
-Return the reconstructed HTML code of the widget.
-
----
-
-### phy.gui.HTMLWidget
-
-An HTML widget that is displayed with Qt, with Javascript support and Python-Javascript
-interactions capabilities. These interactions are asynchronous in Qt5, which requires
-extensive use of callback functions in Python, as well as synchronization primitives
-for unit tests.
-
-**Constructor**
-
-
-* `parent : Widget`
-
-* `title : window title`
-
-* `debounce_events : list-like`
-    The list of event names, raised by the underlying HTML widget, that should be debounced.
-
----
-
-#### HTMLWidget.build
-
-
-**`HTMLWidget.build(self, callback=None)`**
-
-Rebuild the HTML code of the widget.
-
----
-
-#### HTMLWidget.eval_js
-
-
-**`HTMLWidget.eval_js(self, expr, callback=None)`**
-
-Evaluate a Javascript expression.
-
-**Parameters**
-
-
-* `expr : str`
-    A Javascript expression.
-
-* `callback : function`
-    A Python function that is called once the Javascript expression has been
-    evaluated. It takes as input the output of the Javascript expression.
-
----
-
-#### HTMLWidget.set_html
-
-
-**`HTMLWidget.set_html(self, html, callback=None)`**
-
-Set the HTML code.
-
----
-
-#### HTMLWidget.view_source
-
-
-**`HTMLWidget.view_source(self, callback=None)`**
-
-View the HTML source of the widget.
-
----
-
-#### HTMLWidget.debouncer
-
-
-**`HTMLWidget.debouncer`**
-
-Widget debouncer.
-
----
-
 ### phy.gui.IPythonView
 
 A view with an IPython console living in the same Python process as the GUI.
@@ -1594,6 +1470,15 @@ A view with an IPython console living in the same Python process as the GUI.
 **`IPythonView.attach(self, gui, **kwargs)`**
 
 Add the view to the GUI, start the kernel, and inject the specified variables.
+
+---
+
+#### IPythonView.closeEvent
+
+
+**`IPythonView.closeEvent(self, event)`**
+
+closeEvent(self, a0: Optional[QCloseEvent])
 
 ---
 
@@ -1634,7 +1519,7 @@ user input.
 #### KeyValueWidget.add_pair
 
 
-**`KeyValueWidget.add_pair(self, name, default=None, vtype=None)`**
+**`KeyValueWidget.add_pair(self, name, default=None, vtype=None, label=None, minimum=None, maximum=None, decimals=None, suffix=None, tooltip=None)`**
 
 Add a key-value pair.
 
@@ -1780,10 +1665,7 @@ the end.
 
 ### phy.gui.Table
 
-A sortable table with support for selection. Derives from HTMLWidget.
-
-This table uses the following Javascript implementation: https://github.com/kwikteam/tablejs
-This Javascript class builds upon ListJS: https://listjs.com/
+A sortable native Qt table with a compatibility API for legacy callers.
 
 ---
 
@@ -1792,16 +1674,34 @@ This Javascript class builds upon ListJS: https://listjs.com/
 
 **`Table.add(self, objects)`**
 
-Add objects object to the table.
+
 
 ---
 
-#### Table.build
+#### Table.add_remove
 
 
-**`Table.build(self, callback=None)`**
+**`Table.add_remove(self, objects, ids)`**
 
-Rebuild the HTML code of the widget.
+Add and remove rows with one model reset, sort, and fit.
+
+---
+
+#### Table.add_style
+
+
+**`Table.add_style(self, style)`**
+
+Append a stylesheet fragment.
+
+---
+
+#### Table.batch_update
+
+
+**`Table.batch_update(self)`**
+
+Coalesce expensive table fitting across related mutations.
 
 ---
 
@@ -1810,7 +1710,16 @@ Rebuild the HTML code of the widget.
 
 **`Table.change(self, objects)`**
 
-Change some objects.
+
+
+---
+
+#### Table.clear_temporary_files
+
+
+**`Table.clear_temporary_files(self)`**
+
+Compatibility no-op kept for callers from the removed WebEngine path.
 
 ---
 
@@ -1819,27 +1728,16 @@ Change some objects.
 
 **`Table.eval_js(self, expr, callback=None)`**
 
-Evaluate a Javascript expression.
-
-The `table` Javascript variable can be used to interact with the underlying Javascript
-table.
-
-The table has sortable columns, a filter text box, support for single and multi selection
-of rows. Rows can be skippable (used for ignored clusters in phy).
-
-The table can raise Javascript events that are relayed to Python. Objects are
-transparently serialized and deserialized in JSON. Basic types (numbers, strings, lists)
-are transparently converted between Python and Javascript.
-
-**Parameters**
 
 
-* `expr : str`
-    A Javascript expression.
+---
 
-* `callback : function`
-    A Python function that is called once the Javascript expression has been
-    evaluated. It takes as input the output of the Javascript expression.
+#### Table.eventFilter
+
+
+**`Table.eventFilter(self, obj, event)`**
+
+eventFilter(self, a0: Optional[QObject], a1: Optional[QEvent]) -> bool
 
 ---
 
@@ -1848,7 +1746,7 @@ are transparently converted between Python and Javascript.
 
 **`Table.filter(self, text='')`**
 
-Filter the view with a Javascript expression.
+
 
 ---
 
@@ -1857,7 +1755,7 @@ Filter the view with a Javascript expression.
 
 **`Table.first(self, callback=None)`**
 
-Select the first item.
+
 
 ---
 
@@ -1866,7 +1764,7 @@ Select the first item.
 
 **`Table.get(self, id, callback=None)`**
 
-Get the object given its id.
+
 
 ---
 
@@ -1875,7 +1773,7 @@ Get the object given its id.
 
 **`Table.get_current_sort(self, callback=None)`**
 
-Get the current sort as a tuple `(name, dir)`.
+
 
 ---
 
@@ -1884,7 +1782,16 @@ Get the current sort as a tuple `(name, dir)`.
 
 **`Table.get_ids(self, callback=None)`**
 
-Get the list of ids.
+
+
+---
+
+#### Table.get_navigable_ids
+
+
+**`Table.get_navigable_ids(self, callback=None)`**
+
+
 
 ---
 
@@ -1893,7 +1800,7 @@ Get the list of ids.
 
 **`Table.get_next_id(self, callback=None)`**
 
-Get the next non-skipped row id.
+
 
 ---
 
@@ -1902,7 +1809,7 @@ Get the next non-skipped row id.
 
 **`Table.get_previous_id(self, callback=None)`**
 
-Get the previous non-skipped row id.
+
 
 ---
 
@@ -1911,7 +1818,25 @@ Get the previous non-skipped row id.
 
 **`Table.get_selected(self, callback=None)`**
 
-Get the currently selected rows.
+
+
+---
+
+#### Table.get_selected_ids
+
+
+**`Table.get_selected_ids(self)`**
+
+
+
+---
+
+#### Table.get_sibling_id
+
+
+**`Table.get_sibling_id(self, row_id=None, direction='next')`**
+
+
 
 ---
 
@@ -1920,7 +1845,7 @@ Get the currently selected rows.
 
 **`Table.is_ready(self)`**
 
-Whether the widget has been fully loaded.
+
 
 ---
 
@@ -1929,7 +1854,16 @@ Whether the widget has been fully loaded.
 
 **`Table.last(self, callback=None)`**
 
-Select the last item.
+
+
+---
+
+#### Table.minimumSizeHint
+
+
+**`Table.minimumSizeHint(self)`**
+
+minimumSizeHint(self) -> QSize
 
 ---
 
@@ -1938,7 +1872,7 @@ Select the last item.
 
 **`Table.next(self, callback=None)`**
 
-Select the next non-skipped row.
+
 
 ---
 
@@ -1947,7 +1881,7 @@ Select the next non-skipped row.
 
 **`Table.previous(self, callback=None)`**
 
-Select the previous non-skipped row.
+
 
 ---
 
@@ -1956,7 +1890,7 @@ Select the previous non-skipped row.
 
 **`Table.remove(self, ids)`**
 
-Remove some objects from their ids.
+
 
 ---
 
@@ -1965,16 +1899,16 @@ Remove some objects from their ids.
 
 **`Table.remove_all(self)`**
 
-Remove all rows in the table.
+
 
 ---
 
 #### Table.remove_all_and_add
 
 
-**`Table.remove_all_and_add(self, objects)`**
+**`Table.remove_all_and_add(self, objects, fit_columns=True)`**
 
-Remove all rows in the table and add new objects.
+
 
 ---
 
@@ -1983,7 +1917,7 @@ Remove all rows in the table and add new objects.
 
 **`Table.scroll_to(self, id)`**
 
-Scroll until a given row is visible.
+
 
 ---
 
@@ -1992,11 +1926,25 @@ Scroll until a given row is visible.
 
 **`Table.select(self, ids, callback=None, **kwargs)`**
 
-Select some rows in the table from Python.
 
-This function calls `table.select()` in Javascript, which raises a Javascript event
-relayed to Python. This sequence of actions is the same when the user selects
-rows directly in the HTML view.
+
+---
+
+#### Table.select_toggle
+
+
+**`Table.select_toggle(self, row_id)`**
+
+
+
+---
+
+#### Table.select_until
+
+
+**`Table.select_until(self, row_id)`**
+
+
 
 ---
 
@@ -2005,16 +1953,25 @@ rows directly in the HTML view.
 
 **`Table.set_busy(self, busy)`**
 
-Set the busy state of the GUI.
+
 
 ---
 
-#### Table.set_html
+#### Table.set_selected_index_offset
 
 
-**`Table.set_html(self, html, callback=None)`**
+**`Table.set_selected_index_offset(self, n)`**
 
-Set the HTML code.
+
+
+---
+
+#### Table.sizeHint
+
+
+**`Table.sizeHint(self)`**
+
+sizeHint(self) -> QSize
 
 ---
 
@@ -2023,16 +1980,7 @@ Set the HTML code.
 
 **`Table.sort_by(self, name, sort_dir='asc')`**
 
-Sort by a given variable.
 
----
-
-#### Table.view_source
-
-
-**`Table.view_source(self, callback=None)`**
-
-View the HTML source of the widget.
 
 ---
 
@@ -2041,7 +1989,22 @@ View the HTML source of the widget.
 
 **`Table.debouncer`**
 
-Widget debouncer.
+
+
+---
+
+### phy.gui.ViewSettingsDialog
+
+A reusable typed settings form for view-specific parameters.
+
+---
+
+#### ViewSettingsDialog.values
+
+
+**`ViewSettingsDialog.values(self)`**
+
+Return the settings currently entered in the form.
 
 ---
 
@@ -2273,21 +2236,25 @@ Remove all visuals except those marked `clearable=False`.
 
 ---
 
+#### BaseCanvas.close
+
+
+**`BaseCanvas.close(self)`**
+
+Close the OpenGL canvas.
+
+The Qt offscreen platform plugin crashes when closing a shown QOpenGLWindow after
+rendering. Hiding the window avoids the native crash and is sufficient for headless
+test cleanup.
+
+---
+
 #### BaseCanvas.emit
 
 
 **`BaseCanvas.emit(self, name, **kwargs)`**
 
 Raise an internal event and call `on_xxx()` on attached objects.
-
----
-
-#### BaseCanvas.event
-
-
-**`BaseCanvas.event(self, e)`**
-
-Touch event.
 
 ---
 
@@ -3054,7 +3021,7 @@ Insert all GLSL snippets in a vertex and fragment shaders.
 
 **Notes**
 
-The vertex shader typicall contains `gl_Position = transform(data_var_name);`
+The vertex shader typically contains `gl_Position = transform(data_var_name);`
 which is automatically detected, and the GLSL transformations are inserted there.
 
 Snippets can contain `{{var}}` placeholders for the transformed variable name.
@@ -3086,7 +3053,7 @@ Insert a GLSL snippet into the vertex shader.
 
 
 * `origin : Interact`
-    The interact object that adds this GLSL snippet. Should be discared by
+    The interact object that adds this GLSL snippet. Should be discarded by
     visuals that are added with that interact object in `exclude_origins`.
 
 * `index : int`
@@ -4165,6 +4132,19 @@ Remove all visuals except those marked `clearable=False`.
 
 ---
 
+#### PlotCanvas.close
+
+
+**`PlotCanvas.close(self)`**
+
+Close the OpenGL canvas.
+
+The Qt offscreen platform plugin crashes when closing a shown QOpenGLWindow after
+rendering. Hiding the window avoids the native crash and is sufficient for headless
+test cleanup.
+
+---
+
 #### PlotCanvas.emit
 
 
@@ -4198,15 +4178,6 @@ Enable lasso in the canvas.
 **`PlotCanvas.enable_panzoom(self)`**
 
 Enable pan zoom in the canvas.
-
----
-
-#### PlotCanvas.event
-
-
-**`PlotCanvas.event(self, e)`**
-
-Touch event.
 
 ---
 
@@ -5804,7 +5775,7 @@ Switch to the next amplitudes type.
 
 **`AmplitudeView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -5846,7 +5817,7 @@ Return the spikes enclosed by the lasso.
 
 **`AmplitudeView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -5905,7 +5876,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -5969,7 +5940,7 @@ Size of the spike markers, in pixels.
 **`AmplitudeView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -6224,7 +6195,7 @@ Switch to the next color scheme.
 
 **`ClusterScatterView.on_cluster(self, sender, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -6257,7 +6228,7 @@ Change the scaling with the wheel.
 
 **`ClusterScatterView.on_select(self, *args, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -6388,7 +6359,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -6506,7 +6477,7 @@ Size of the spike markers, in pixels.
 **`ClusterScatterView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -6538,6 +6509,9 @@ Display a table of all clusters with metrics and labels as columns. Derive from 
     Initial sort of the table as a pair (column_name, order), where order is
     either `asc` or `desc`.
 
+* `skip_masked : bool`
+    Whether navigation should skip noise and MUA rows.
+
 ---
 
 #### ClusterView.add
@@ -6545,16 +6519,34 @@ Display a table of all clusters with metrics and labels as columns. Derive from 
 
 **`ClusterView.add(self, objects)`**
 
-Add objects object to the table.
+
 
 ---
 
-#### ClusterView.build
+#### ClusterView.add_remove
 
 
-**`ClusterView.build(self, callback=None)`**
+**`ClusterView.add_remove(self, objects, ids)`**
 
-Rebuild the HTML code of the widget.
+Add and remove rows with one model reset, sort, and fit.
+
+---
+
+#### ClusterView.add_style
+
+
+**`ClusterView.add_style(self, style)`**
+
+Append a stylesheet fragment.
+
+---
+
+#### ClusterView.batch_update
+
+
+**`ClusterView.batch_update(self)`**
+
+Coalesce expensive table fitting across related mutations.
 
 ---
 
@@ -6563,7 +6555,16 @@ Rebuild the HTML code of the widget.
 
 **`ClusterView.change(self, objects)`**
 
-Change some objects.
+
+
+---
+
+#### ClusterView.clear_temporary_files
+
+
+**`ClusterView.clear_temporary_files(self)`**
+
+Compatibility no-op kept for callers from the removed WebEngine path.
 
 ---
 
@@ -6572,27 +6573,16 @@ Change some objects.
 
 **`ClusterView.eval_js(self, expr, callback=None)`**
 
-Evaluate a Javascript expression.
-
-The `table` Javascript variable can be used to interact with the underlying Javascript
-table.
-
-The table has sortable columns, a filter text box, support for single and multi selection
-of rows. Rows can be skippable (used for ignored clusters in phy).
-
-The table can raise Javascript events that are relayed to Python. Objects are
-transparently serialized and deserialized in JSON. Basic types (numbers, strings, lists)
-are transparently converted between Python and Javascript.
-
-**Parameters**
 
 
-* `expr : str`
-    A Javascript expression.
+---
 
-* `callback : function`
-    A Python function that is called once the Javascript expression has been
-    evaluated. It takes as input the output of the Javascript expression.
+#### ClusterView.eventFilter
+
+
+**`ClusterView.eventFilter(self, obj, event)`**
+
+eventFilter(self, a0: Optional[QObject], a1: Optional[QEvent]) -> bool
 
 ---
 
@@ -6601,7 +6591,7 @@ are transparently converted between Python and Javascript.
 
 **`ClusterView.filter(self, text='')`**
 
-Filter the view with a Javascript expression.
+
 
 ---
 
@@ -6610,7 +6600,7 @@ Filter the view with a Javascript expression.
 
 **`ClusterView.first(self, callback=None)`**
 
-Select the first item.
+
 
 ---
 
@@ -6619,7 +6609,7 @@ Select the first item.
 
 **`ClusterView.get(self, id, callback=None)`**
 
-Get the object given its id.
+
 
 ---
 
@@ -6628,7 +6618,7 @@ Get the object given its id.
 
 **`ClusterView.get_current_sort(self, callback=None)`**
 
-Get the current sort as a tuple `(name, dir)`.
+
 
 ---
 
@@ -6637,7 +6627,16 @@ Get the current sort as a tuple `(name, dir)`.
 
 **`ClusterView.get_ids(self, callback=None)`**
 
-Get the list of ids.
+
+
+---
+
+#### ClusterView.get_navigable_ids
+
+
+**`ClusterView.get_navigable_ids(self, callback=None)`**
+
+
 
 ---
 
@@ -6646,7 +6645,7 @@ Get the list of ids.
 
 **`ClusterView.get_next_id(self, callback=None)`**
 
-Get the next non-skipped row id.
+
 
 ---
 
@@ -6655,7 +6654,7 @@ Get the next non-skipped row id.
 
 **`ClusterView.get_previous_id(self, callback=None)`**
 
-Get the previous non-skipped row id.
+
 
 ---
 
@@ -6664,7 +6663,25 @@ Get the previous non-skipped row id.
 
 **`ClusterView.get_selected(self, callback=None)`**
 
-Get the currently selected rows.
+
+
+---
+
+#### ClusterView.get_selected_ids
+
+
+**`ClusterView.get_selected_ids(self)`**
+
+
+
+---
+
+#### ClusterView.get_sibling_id
+
+
+**`ClusterView.get_sibling_id(self, row_id=None, direction='next')`**
+
+
 
 ---
 
@@ -6673,7 +6690,7 @@ Get the currently selected rows.
 
 **`ClusterView.is_ready(self)`**
 
-Whether the widget has been fully loaded.
+
 
 ---
 
@@ -6682,7 +6699,16 @@ Whether the widget has been fully loaded.
 
 **`ClusterView.last(self, callback=None)`**
 
-Select the last item.
+
+
+---
+
+#### ClusterView.minimumSizeHint
+
+
+**`ClusterView.minimumSizeHint(self)`**
+
+minimumSizeHint(self) -> QSize
 
 ---
 
@@ -6691,7 +6717,7 @@ Select the last item.
 
 **`ClusterView.next(self, callback=None)`**
 
-Select the next non-skipped row.
+
 
 ---
 
@@ -6700,7 +6726,7 @@ Select the next non-skipped row.
 
 **`ClusterView.previous(self, callback=None)`**
 
-Select the previous non-skipped row.
+
 
 ---
 
@@ -6709,7 +6735,7 @@ Select the previous non-skipped row.
 
 **`ClusterView.remove(self, ids)`**
 
-Remove some objects from their ids.
+
 
 ---
 
@@ -6718,16 +6744,16 @@ Remove some objects from their ids.
 
 **`ClusterView.remove_all(self)`**
 
-Remove all rows in the table.
+
 
 ---
 
 #### ClusterView.remove_all_and_add
 
 
-**`ClusterView.remove_all_and_add(self, objects)`**
+**`ClusterView.remove_all_and_add(self, objects, fit_columns=True)`**
 
-Remove all rows in the table and add new objects.
+
 
 ---
 
@@ -6736,7 +6762,7 @@ Remove all rows in the table and add new objects.
 
 **`ClusterView.scroll_to(self, id)`**
 
-Scroll until a given row is visible.
+
 
 ---
 
@@ -6745,11 +6771,25 @@ Scroll until a given row is visible.
 
 **`ClusterView.select(self, ids, callback=None, **kwargs)`**
 
-Select some rows in the table from Python.
 
-This function calls `table.select()` in Javascript, which raises a Javascript event
-relayed to Python. This sequence of actions is the same when the user selects
-rows directly in the HTML view.
+
+---
+
+#### ClusterView.select_toggle
+
+
+**`ClusterView.select_toggle(self, row_id)`**
+
+
+
+---
+
+#### ClusterView.select_until
+
+
+**`ClusterView.select_until(self, row_id)`**
+
+
 
 ---
 
@@ -6758,16 +6798,16 @@ rows directly in the HTML view.
 
 **`ClusterView.set_busy(self, busy)`**
 
-Set the busy state of the GUI.
+
 
 ---
 
-#### ClusterView.set_html
+#### ClusterView.set_selected_index_offset
 
 
-**`ClusterView.set_html(self, html, callback=None)`**
+**`ClusterView.set_selected_index_offset(self, n)`**
 
-Set the HTML code.
+
 
 ---
 
@@ -6780,21 +6820,21 @@ Set the cluster view state, with a specified sort.
 
 ---
 
+#### ClusterView.sizeHint
+
+
+**`ClusterView.sizeHint(self)`**
+
+sizeHint(self) -> QSize
+
+---
+
 #### ClusterView.sort_by
 
 
 **`ClusterView.sort_by(self, name, sort_dir='asc')`**
 
-Sort by a given variable.
 
----
-
-#### ClusterView.view_source
-
-
-**`ClusterView.view_source(self, callback=None)`**
-
-View the HTML source of the widget.
 
 ---
 
@@ -6803,7 +6843,7 @@ View the HTML source of the widget.
 
 **`ClusterView.debouncer`**
 
-Widget debouncer.
+
 
 ---
 
@@ -6898,7 +6938,7 @@ results in a new cluster id being assigned.
 
 If a spike is assigned to a new cluster, then all other spikes
 belonging to the same cluster are assigned to a brand new cluster,
-even if they were not changed explicitely by the `assign()` method.
+even if they were not changed explicitly by the `assign()` method.
 
 In other words, the list of spikes affected by an `assign()` is almost
 always a strict superset of the `spike_ids` parameter. The only case
@@ -7149,13 +7189,22 @@ Increase the window size.
 
 **`CorrelogramView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
 
 This method is mostly only useful to views that show all clusters and not just the
 selected clusters (template view, raster view).
+
+---
+
+#### CorrelogramView.on_mouse_release
+
+
+**`CorrelogramView.on_mouse_release(self, e)`**
+
+Promote a similarity cluster after a stationary secondary click.
 
 ---
 
@@ -7173,7 +7222,7 @@ Change the scaling with the wheel.
 
 **`CorrelogramView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -7243,7 +7292,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -7309,7 +7358,7 @@ Change the normalization of the correlograms.
 **`CorrelogramView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -7426,7 +7475,7 @@ Increase the scaling parameter.
 
 **`FeatureView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -7468,7 +7517,7 @@ Return the spikes enclosed by the lasso.
 
 **`FeatureView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -7554,7 +7603,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -7609,7 +7658,7 @@ Size of the spike markers, in pixels.
 **`FeatureView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -7655,6 +7704,15 @@ Decrease the scaling parameter.
 
 ---
 
+#### FiringRateView.edit_view_settings
+
+
+**`FiringRateView.edit_view_settings(self)`**
+
+Edit the histogram bin size and displayed range.
+
+---
+
 #### FiringRateView.get_clusters_data
 
 
@@ -7680,7 +7738,7 @@ Increase the scaling parameter.
 
 **`FiringRateView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -7704,7 +7762,7 @@ Change the scaling with the wheel.
 
 **`FiringRateView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -7772,7 +7830,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -7836,7 +7894,7 @@ Return the bin size (in seconds or milliseconds depending on `self.bin_unit`).
 **`FiringRateView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -7852,7 +7910,7 @@ GUI is closed. To be overriden.
 ### phy.cluster.HistogramView
 
 This view displays a histogram for every selected cluster, along with a possible plot
-and some text. To be overriden.
+and some text. To be overridden.
 
 **Constructor**
 
@@ -7889,6 +7947,15 @@ Decrease the scaling parameter.
 
 ---
 
+#### HistogramView.edit_view_settings
+
+
+**`HistogramView.edit_view_settings(self)`**
+
+Edit the histogram bin size and displayed range.
+
+---
+
 #### HistogramView.get_clusters_data
 
 
@@ -7914,7 +7981,7 @@ Increase the scaling parameter.
 
 **`HistogramView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -7938,7 +8005,7 @@ Change the scaling with the wheel.
 
 **`HistogramView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -8006,7 +8073,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -8070,7 +8137,7 @@ Return the bin size (in seconds or milliseconds depending on `self.bin_unit`).
 **`HistogramView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -8116,6 +8183,15 @@ Decrease the scaling parameter.
 
 ---
 
+#### ISIView.edit_view_settings
+
+
+**`ISIView.edit_view_settings(self)`**
+
+Edit the histogram bin size and displayed range.
+
+---
+
 #### ISIView.get_clusters_data
 
 
@@ -8141,7 +8217,7 @@ Increase the scaling parameter.
 
 **`ISIView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -8165,7 +8241,7 @@ Change the scaling with the wheel.
 
 **`ISIView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -8233,7 +8309,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -8297,7 +8373,7 @@ Return the bin size (in seconds or milliseconds depending on `self.bin_unit`).
 **`ISIView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -8374,7 +8450,7 @@ To override.
 
 **`ManualClusteringView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -8389,7 +8465,7 @@ selected clusters (template view, raster view).
 
 **`ManualClusteringView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -8430,7 +8506,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -8467,7 +8543,7 @@ When on, the view is automatically updated when the cluster selection changes.
 **`ManualClusteringView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -8476,7 +8552,7 @@ GUI is closed. To be overriden.
 
 **`ManualClusteringView.status`**
 
-To be overriden.
+To be overridden.
 
 ---
 
@@ -8536,7 +8612,7 @@ To override.
 
 **`ProbeView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -8592,7 +8668,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -8638,7 +8714,7 @@ Toggle the display of the channel ids.
 **`ProbeView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -8647,7 +8723,7 @@ GUI is closed. To be overriden.
 
 **`ProbeView.status`**
 
-To be overriden.
+To be overridden.
 
 ---
 
@@ -8754,7 +8830,7 @@ Switch to the next color scheme.
 
 **`RasterView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -8787,7 +8863,7 @@ Change the scaling with the wheel.
 
 **`RasterView.on_select(self, *args, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -8864,7 +8940,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -8955,7 +9031,7 @@ Size of the spike markers, in pixels.
 **`RasterView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -9030,7 +9106,7 @@ Increase the scaling parameter.
 
 **`ScatterView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -9063,7 +9139,7 @@ Return the spikes enclosed by the lasso.
 
 **`ScatterView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -9113,7 +9189,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -9159,7 +9235,7 @@ Size of the spike markers, in pixels.
 **`ScatterView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -9168,7 +9244,7 @@ GUI is closed. To be overriden.
 
 **`ScatterView.status`**
 
-To be overriden.
+To be overridden.
 
 ---
 
@@ -9191,16 +9267,34 @@ in the cluster view.
 
 **`SimilarityView.add(self, objects)`**
 
-Add objects object to the table.
+
 
 ---
 
-#### SimilarityView.build
+#### SimilarityView.add_remove
 
 
-**`SimilarityView.build(self, callback=None)`**
+**`SimilarityView.add_remove(self, objects, ids)`**
 
-Rebuild the HTML code of the widget.
+Add and remove rows with one model reset, sort, and fit.
+
+---
+
+#### SimilarityView.add_style
+
+
+**`SimilarityView.add_style(self, style)`**
+
+Append a stylesheet fragment.
+
+---
+
+#### SimilarityView.batch_update
+
+
+**`SimilarityView.batch_update(self)`**
+
+Coalesce expensive table fitting across related mutations.
 
 ---
 
@@ -9209,7 +9303,16 @@ Rebuild the HTML code of the widget.
 
 **`SimilarityView.change(self, objects)`**
 
-Change some objects.
+
+
+---
+
+#### SimilarityView.clear_temporary_files
+
+
+**`SimilarityView.clear_temporary_files(self)`**
+
+Compatibility no-op kept for callers from the removed WebEngine path.
 
 ---
 
@@ -9218,27 +9321,16 @@ Change some objects.
 
 **`SimilarityView.eval_js(self, expr, callback=None)`**
 
-Evaluate a Javascript expression.
-
-The `table` Javascript variable can be used to interact with the underlying Javascript
-table.
-
-The table has sortable columns, a filter text box, support for single and multi selection
-of rows. Rows can be skippable (used for ignored clusters in phy).
-
-The table can raise Javascript events that are relayed to Python. Objects are
-transparently serialized and deserialized in JSON. Basic types (numbers, strings, lists)
-are transparently converted between Python and Javascript.
-
-**Parameters**
 
 
-* `expr : str`
-    A Javascript expression.
+---
 
-* `callback : function`
-    A Python function that is called once the Javascript expression has been
-    evaluated. It takes as input the output of the Javascript expression.
+#### SimilarityView.eventFilter
+
+
+**`SimilarityView.eventFilter(self, obj, event)`**
+
+eventFilter(self, a0: Optional[QObject], a1: Optional[QEvent]) -> bool
 
 ---
 
@@ -9247,7 +9339,7 @@ are transparently converted between Python and Javascript.
 
 **`SimilarityView.filter(self, text='')`**
 
-Filter the view with a Javascript expression.
+
 
 ---
 
@@ -9256,7 +9348,7 @@ Filter the view with a Javascript expression.
 
 **`SimilarityView.first(self, callback=None)`**
 
-Select the first item.
+
 
 ---
 
@@ -9265,7 +9357,7 @@ Select the first item.
 
 **`SimilarityView.get(self, id, callback=None)`**
 
-Get the object given its id.
+
 
 ---
 
@@ -9274,7 +9366,7 @@ Get the object given its id.
 
 **`SimilarityView.get_current_sort(self, callback=None)`**
 
-Get the current sort as a tuple `(name, dir)`.
+
 
 ---
 
@@ -9283,7 +9375,16 @@ Get the current sort as a tuple `(name, dir)`.
 
 **`SimilarityView.get_ids(self, callback=None)`**
 
-Get the list of ids.
+
+
+---
+
+#### SimilarityView.get_navigable_ids
+
+
+**`SimilarityView.get_navigable_ids(self, callback=None)`**
+
+
 
 ---
 
@@ -9292,7 +9393,7 @@ Get the list of ids.
 
 **`SimilarityView.get_next_id(self, callback=None)`**
 
-Get the next non-skipped row id.
+
 
 ---
 
@@ -9301,7 +9402,7 @@ Get the next non-skipped row id.
 
 **`SimilarityView.get_previous_id(self, callback=None)`**
 
-Get the previous non-skipped row id.
+
 
 ---
 
@@ -9310,7 +9411,25 @@ Get the previous non-skipped row id.
 
 **`SimilarityView.get_selected(self, callback=None)`**
 
-Get the currently selected rows.
+
+
+---
+
+#### SimilarityView.get_selected_ids
+
+
+**`SimilarityView.get_selected_ids(self)`**
+
+
+
+---
+
+#### SimilarityView.get_sibling_id
+
+
+**`SimilarityView.get_sibling_id(self, row_id=None, direction='next')`**
+
+
 
 ---
 
@@ -9319,7 +9438,7 @@ Get the currently selected rows.
 
 **`SimilarityView.is_ready(self)`**
 
-Whether the widget has been fully loaded.
+
 
 ---
 
@@ -9328,7 +9447,16 @@ Whether the widget has been fully loaded.
 
 **`SimilarityView.last(self, callback=None)`**
 
-Select the last item.
+
+
+---
+
+#### SimilarityView.minimumSizeHint
+
+
+**`SimilarityView.minimumSizeHint(self)`**
+
+minimumSizeHint(self) -> QSize
 
 ---
 
@@ -9337,7 +9465,7 @@ Select the last item.
 
 **`SimilarityView.next(self, callback=None)`**
 
-Select the next non-skipped row.
+
 
 ---
 
@@ -9346,7 +9474,7 @@ Select the next non-skipped row.
 
 **`SimilarityView.previous(self, callback=None)`**
 
-Select the previous non-skipped row.
+
 
 ---
 
@@ -9355,7 +9483,7 @@ Select the previous non-skipped row.
 
 **`SimilarityView.remove(self, ids)`**
 
-Remove some objects from their ids.
+
 
 ---
 
@@ -9364,16 +9492,16 @@ Remove some objects from their ids.
 
 **`SimilarityView.remove_all(self)`**
 
-Remove all rows in the table.
+
 
 ---
 
 #### SimilarityView.remove_all_and_add
 
 
-**`SimilarityView.remove_all_and_add(self, objects)`**
+**`SimilarityView.remove_all_and_add(self, objects, fit_columns=True)`**
 
-Remove all rows in the table and add new objects.
+
 
 ---
 
@@ -9391,7 +9519,7 @@ Recreate the similarity view, given the selected clusters in the cluster view.
 
 **`SimilarityView.scroll_to(self, id)`**
 
-Scroll until a given row is visible.
+
 
 ---
 
@@ -9400,11 +9528,25 @@ Scroll until a given row is visible.
 
 **`SimilarityView.select(self, ids, callback=None, **kwargs)`**
 
-Select some rows in the table from Python.
 
-This function calls `table.select()` in Javascript, which raises a Javascript event
-relayed to Python. This sequence of actions is the same when the user selects
-rows directly in the HTML view.
+
+---
+
+#### SimilarityView.select_toggle
+
+
+**`SimilarityView.select_toggle(self, row_id)`**
+
+
+
+---
+
+#### SimilarityView.select_until
+
+
+**`SimilarityView.select_until(self, row_id)`**
+
+
 
 ---
 
@@ -9413,16 +9555,7 @@ rows directly in the HTML view.
 
 **`SimilarityView.set_busy(self, busy)`**
 
-Set the busy state of the GUI.
 
----
-
-#### SimilarityView.set_html
-
-
-**`SimilarityView.set_html(self, html, callback=None)`**
-
-Set the HTML code.
 
 ---
 
@@ -9445,21 +9578,21 @@ Set the cluster view state, with a specified sort.
 
 ---
 
+#### SimilarityView.sizeHint
+
+
+**`SimilarityView.sizeHint(self)`**
+
+sizeHint(self) -> QSize
+
+---
+
 #### SimilarityView.sort_by
 
 
 **`SimilarityView.sort_by(self, name, sort_dir='asc')`**
 
-Sort by a given variable.
 
----
-
-#### SimilarityView.view_source
-
-
-**`SimilarityView.view_source(self, callback=None)`**
-
-View the HTML source of the widget.
 
 ---
 
@@ -9468,7 +9601,7 @@ View the HTML source of the widget.
 
 **`SimilarityView.debouncer`**
 
-Widget debouncer.
+
 
 ---
 
@@ -9489,7 +9622,7 @@ Component that brings manual clustering facilities to a GUI:
 * `ClusterMeta` instance: change cluster metadata (e.g. group).
 * Cluster selection.
 * Many manual clustering-related actions, snippets, shortcuts, etc.
-* Two HTML tables : `ClusterView` and `SimilarityView`.
+* Two native Qt tables: `ClusterView` and `SimilarityView`.
 
 **Constructor**
 
@@ -9515,6 +9648,13 @@ Component that brings manual clustering facilities to a GUI:
 
 * `context : Context`
     Handles the cache.
+
+* `n_similar_clusters_to_select : int`
+    Number of rows selected by the select-first-similar action. The default is 15.
+
+* `skip_masked_clusters : bool`
+    Whether automatic navigation and similar-cluster selection skip noise and MUA
+    clusters. The default is True.
 
 **Events**
 
@@ -9563,12 +9703,21 @@ Only used in the automated testing suite.
 
 ---
 
+#### Supervisor.demote_cluster
+
+
+**`Supervisor.demote_cluster(self, cluster_id, callback=None)`**
+
+Move a selected cluster row into the similarity view.
+
+---
+
 #### Supervisor.filter
 
 
 **`Supervisor.filter(self, text)`**
 
-Filter the clusters using a Javascript expression on the column names.
+Filter the clusters using a boolean expression on the column names.
 
 ---
 
@@ -9689,6 +9838,15 @@ Select the previous best cluster in the cluster view.
 
 ---
 
+#### Supervisor.promote_similar
+
+
+**`Supervisor.promote_similar(self, cluster_id, callback=None)`**
+
+Move a similarity row into the cluster view while preserving all other selections.
+
+---
+
 #### Supervisor.redo
 
 
@@ -9728,6 +9886,24 @@ Select a list of clusters.
 
 ---
 
+#### Supervisor.select_first_similar
+
+
+**`Supervisor.select_first_similar(self, n=None, callback=None)`**
+
+Select the first N eligible clusters currently shown in the similarity view.
+
+---
+
+#### Supervisor.set_skip_masked_clusters
+
+
+**`Supervisor.set_skip_masked_clusters(self, skip_masked, callback=None)`**
+
+Set whether automatic navigation and selection skip noise and MUA clusters.
+
+---
+
 #### Supervisor.sort
 
 
@@ -9743,6 +9919,15 @@ Sort the cluster view by a given column, in a given order (asc or desc).
 **`Supervisor.split(self, spike_ids=None, spike_clusters_rel=0)`**
 
 Make a new cluster out of the specified spikes.
+
+---
+
+#### Supervisor.toggle_cluster_selection
+
+
+**`Supervisor.toggle_cluster_selection(self, cluster_id, callback=None)`**
+
+Add or remove a cluster from the cluster-view selection.
 
 ---
 
@@ -9934,7 +10119,7 @@ Switch to the next color scheme.
 
 **`TemplateView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -9967,7 +10152,7 @@ Change the scaling with the wheel.
 
 **`TemplateView.on_select(self, *args, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -10044,7 +10229,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -10126,7 +10311,7 @@ Return the grid scaling.
 **`TemplateView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -10345,7 +10530,7 @@ Switch to the next color scheme.
 
 **`TraceImageView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -10378,7 +10563,7 @@ Scroll through the data with alt+wheel.
 
 **`TraceImageView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -10446,7 +10631,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -10610,7 +10795,7 @@ Scaling of the colormap vrange.
 **`TraceImageView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -10843,7 +11028,7 @@ Switch to the next color scheme.
 
 **`TraceView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -10876,7 +11061,7 @@ Scroll through the data with alt+wheel.
 
 **`TraceView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -10944,7 +11129,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -11108,7 +11293,7 @@ Scaling of the channel boxes.
 **`TraceView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -11293,7 +11478,7 @@ Switch to the next waveforms type.
 
 **`WaveformView.on_cluster(self, up)`**
 
-Callback function when a clustering action occurs. May be overriden.
+Callback function when a clustering action occurs. May be overridden.
 
 Note: this method is called *before* on_select() so as to give a chance to the view
 to update itself before the selection of the new clusters.
@@ -11326,7 +11511,7 @@ Change the scaling with the wheel.
 
 **`WaveformView.on_select(self, cluster_ids=None, **kwargs)`**
 
-Callback function when clusters are selected. May be overriden.
+Callback function when clusters are selected. May be overridden.
 
 ---
 
@@ -11385,7 +11570,7 @@ Set the view state.
 
 The passed object is the persisted `self.state` bunch.
 
-May be overriden.
+May be overridden.
 
 ---
 
@@ -11512,7 +11697,7 @@ Whether to overlap the waveforms belonging to different clusters.
 **`WaveformView.state`**
 
 View state, a Bunch instance automatically persisted in the GUI state when the
-GUI is closed. To be overriden.
+GUI is closed. To be overridden.
 
 ---
 
@@ -11558,60 +11743,12 @@ Log exceptions instead of crashing the GUI, and display an error dialog on error
 
 ---
 
-#### phy.apps.contextmanager
-
-
-**`phy.apps.contextmanager(func)`**
-
-@contextmanager decorator.
-
-Typical usage:
-
-    @contextmanager
-    def some_generator(<arguments>):
-        <setup>
-        try:
-            yield <value>
-        finally:
-            <cleanup>
-
-This makes this:
-
-    with some_generator(<arguments>) as <variable>:
-        <body>
-
-equivalent to this:
-
-    <setup>
-    try:
-        <variable> = <value>
-        <body>
-    finally:
-        <cleanup>
-
----
-
 #### phy.apps.exceptionHandler
 
 
 **`phy.apps.exceptionHandler(exception_type, exception, traceback)`**
 
 
-
----
-
-#### phy.apps.format_exception
-
-
-**`phy.apps.format_exception(etype, value, tb, limit=None, chain=True)`**
-
-Format a stack trace and the exception information.
-
-The arguments have the same meaning as the corresponding arguments
-to print_exception().  The return value is a list of strings, each
-ending in a newline and some containing internal newlines.  When
-these lines are concatenated and printed, exactly the same text is
-printed as does print_exception().
 
 ---
 
@@ -11645,7 +11782,7 @@ Base controller for manual clustering GUI.
 
 **Methods to override**
 
-The main methods that can be overriden when implementing a custom `Controller` are:
+The main methods that can be overridden when implementing a custom `Controller` are:
 
 
 * `_create_model() : None => object`
@@ -11737,7 +11874,7 @@ save_metadata(name, values) : str, dict => None
 
 The Model represents data as it is stored on disk. When cluster data changes during
 a manual clustering session (like spike-cluster assignments), the data in the model
-is not expected to change (it is rather the responsability of the controller).
+is not expected to change (it is rather the responsibility of the controller).
 
 The model implements saving option for spike cluster assignments and cluster metadata.
 
@@ -11751,6 +11888,18 @@ The model implements saving option for spike cluster assignments and cluster met
 Add a view of a given type if there is not already one.
 
 To be called before creating a GUI.
+
+---
+
+#### BaseController.close
+
+
+**`BaseController.close(self, close_model=True)`**
+
+Release files owned by the controller.
+
+Closing a GUI does not necessarily end a controller's lifetime: callers may
+recreate a GUI around the same model. Resource cleanup is therefore explicit.
 
 ---
 
@@ -11866,7 +12015,7 @@ Return the channel label of the best channel, for display in the cluster view.
 
 **`BaseController.get_best_channels(self, cluster_id)`**
 
-Return the best channels of a given cluster. To be overriden.
+Return the best channels of a given cluster. To be overridden.
 
 ---
 
@@ -11876,7 +12025,7 @@ Return the best channels of a given cluster. To be overriden.
 **`BaseController.get_channel_amplitudes(self, cluster_id)`**
 
 Return the best channels of a given cluster along with their relative amplitudes.
-To be overriden.
+To be overridden.
 
 ---
 
@@ -12005,36 +12154,6 @@ methods to do system calls on path objects. Depending on your system,
 instantiating a Path will return either a PosixPath or a WindowsPath
 object. You can also instantiate a PosixPath or WindowsPath directly,
 but cannot instantiate a WindowsPath on a POSIX system or vice versa.
-
----
-
-#### Path.None
-
-
-**`Path.None`**
-
-attrgetter(attr, ...) --> attrgetter object
-
-Return a callable object that fetches the given attribute(s) from its operand.
-After f = attrgetter('name'), the call f(r) returns r.name.
-After g = attrgetter('name', 'date'), the call g(r) returns (r.name, r.date).
-After h = attrgetter('name.first', 'name.last'), the call h(r) returns
-(r.name.first, r.name.last).
-
----
-
-#### Path.None
-
-
-**`Path.None`**
-
-attrgetter(attr, ...) --> attrgetter object
-
-Return a callable object that fetches the given attribute(s) from its operand.
-After f = attrgetter('name'), the call f(r) returns r.name.
-After g = attrgetter('name', 'date'), the call g(r) returns (r.name, r.date).
-After h = attrgetter('name.first', 'name.last'), the call h(r) returns
-(r.name.first, r.name.last).
 
 ---
 
@@ -12321,6 +12440,18 @@ Controller for the Template GUI.
 Add a view of a given type if there is not already one.
 
 To be called before creating a GUI.
+
+---
+
+#### TemplateController.close
+
+
+**`TemplateController.close(self, close_model=True)`**
+
+Release files owned by the controller.
+
+Closing a GUI does not necessarily end a controller's lifetime: callers may
+recreate a GUI around the same model. Resource cleanup is therefore explicit.
 
 ---
 
@@ -12740,12 +12871,40 @@ Close all memmapped files.
 
 ---
 
+#### TemplateModel.cluster_waveforms
+
+
+**`TemplateModel.cluster_waveforms(self)`**
+
+Computes the cluster waveforms for split and merged clusters
+:return:
+
+---
+
 #### TemplateModel.describe
 
 
 **`TemplateModel.describe(self)`**
 
 Display basic information about the dataset.
+
+---
+
+#### TemplateModel.get_amplitudes_true
+
+
+**`TemplateModel.get_amplitudes_true(self, sample2unit=1.0, use='templates')`**
+
+Convert spike amplitude values to input amplitudes units
+via scaling by unwhitened template waveform.
+:param sample2unit float: factor to convert the raw data to a physical unit (defaults 1.)
+:returns: spike_amplitudes_volts: np.array [nspikes] spike amplitudes in raw data units
+:returns: templates_volts: np.array[ntemplates, nsamples, nchannels]: templates
+in raw data units
+:returns: template_amps_volts: np.array[ntemplates]: average templates amplitudes
+ in raw data units
+To scale the template for template matching,
+raw_data_volts = templates_volts * spike_amplitudes_volts / template_amps_volts
 
 ---
 
@@ -12761,7 +12920,7 @@ Return the most relevant channels of a cluster.
 #### TemplateModel.get_cluster_mean_waveforms
 
 
-**`TemplateModel.get_cluster_mean_waveforms(self, cluster_id)`**
+**`TemplateModel.get_cluster_mean_waveforms(self, cluster_id, unwhiten=True)`**
 
 Return the mean template waveforms of a cluster, as a weighted average of the
 template waveforms from which the cluster originates from.
@@ -12786,6 +12945,15 @@ Return the spike ids that belong to a given template.
 
 ---
 
+#### TemplateModel.get_depths
+
+
+**`TemplateModel.get_depths(self)`**
+
+Compute spike depths based on spike pc features and probe depths.
+
+---
+
 #### TemplateModel.get_features
 
 
@@ -12795,10 +12963,19 @@ Return sparse features for given spikes.
 
 ---
 
+#### TemplateModel.get_merge_map
+
+
+**`TemplateModel.get_merge_map(self)`**
+
+"Gets the maps of merges and splits between spikes.clusters and spikes.templates
+
+---
+
 #### TemplateModel.get_template
 
 
-**`TemplateModel.get_template(self, template_id, channel_ids=None, amplitude_threshold=None)`**
+**`TemplateModel.get_template(self, template_id, channel_ids=None, amplitude_threshold=None, unwhiten=True)`**
 
 Get data about a template.
 
@@ -12889,9 +13066,36 @@ Save the spike clusters.
 #### TemplateModel.save_spikes_subset_waveforms
 
 
-**`TemplateModel.save_spikes_subset_waveforms(self, max_n_spikes_per_template=None, max_n_channels=None)`**
+**`TemplateModel.save_spikes_subset_waveforms(self, max_n_spikes_per_template=None, max_n_channels=None, sample2unit=1.0)`**
 
 
+
+---
+
+#### TemplateModel.clusters_amplitudes
+
+
+**`TemplateModel.clusters_amplitudes`**
+
+Returns the average amplitude per cluster
+
+---
+
+#### TemplateModel.clusters_channels
+
+
+**`TemplateModel.clusters_channels`**
+
+Returns a vector of peak channels for all clusters waveforms
+
+---
+
+#### TemplateModel.clusters_waveforms_durations
+
+
+**`TemplateModel.clusters_waveforms_durations`**
+
+Returns a vector of waveform durations (ms) for all clusters
 
 ---
 
@@ -12909,7 +13113,7 @@ Returns the average amplitude per cluster
 
 **`TemplateModel.templates_channels`**
 
-Returns a vector of peak channels for all templates
+Returns a vector of peak channels for all templates waveforms
 
 ---
 
@@ -12996,6 +13200,18 @@ Controller for the Kwik GUI.
 Add a view of a given type if there is not already one.
 
 To be called before creating a GUI.
+
+---
+
+#### KwikController.close
+
+
+**`KwikController.close(self, close_model=True)`**
+
+Release files owned by the controller.
+
+Closing a GUI does not necessarily end a controller's lifetime: callers may
+recreate a GUI around the same model. Resource cleanup is therefore explicit.
 
 ---
 

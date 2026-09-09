@@ -36,11 +36,21 @@ You can move up and down in the **cluster view** with the `Up` and `Down` arrows
 
 You can move up and down in the **similarity view** with the `Space` and `Shift-space` arrows. The cluster selected in the similarity view is called the **similar cluster**. The idea is to go through every "best cluster" in the cluster view, and review the "similar clusters" in the similarity view (sorted by decreasing similarity with the best cluster).
 
+Press `Control+Space` to select the first 15 eligible clusters currently shown in the similarity view while preserving the cluster view selection. This uses the current similarity view sorting and filtering, and replaces any previous similarity view selection. To choose a different number, use **Select > Select N Similar**; the chosen number becomes the shortcut's new default and is remembered across sessions.
+
+Wizard navigation skips clusters labeled `noise` or `mua` by default. To include them when moving through either table or when selecting N similar clusters, uncheck **Select > Skip Noise and MUA**. This preference is remembered across sessions. Direct selection with the mouse, a cluster ID, or a snippet can always select these clusters. Code that creates a `Supervisor` can choose the initial behavior with `skip_masked_clusters=False`; saved GUI state takes precedence when present.
+
+On macOS, this shortcut uses the Control key, not Command. If `Control+Space` is assigned to switching input sources in macOS System Settings, disable or remap that system shortcut so that phy can receive it.
+
+Control-right-click any cluster in the similarity view to move it into the cluster view. Existing selections in both tables are preserved, and the previous best cluster remains the similarity reference.
+
+Control-right-click a cluster in the cluster view to add it to, or remove it from, the current cluster selection. A plain right-click does not change the selection.
+
 For each similar cluster, you can either:
 
 * Press `space` to do nothing and go to the next similar cluster.
 * Press `g` to merge the best and similar clusters, and go to the next similar cluster.
-* Press one of the keyboard shortcuts to move either the similar cluster, the best cluster, or both clusters, to either the `good`, `mua`, or `noise` group (there are nine keyboard shorcuts for nine possibilities, see below). The best and/or similar clusters change automatically afterwards.
+* Press one of the keyboard shortcuts to move either the similar cluster, the best cluster, or both clusters, to either the `good`, `mua`, or `noise` group (there are nine keyboard shortcuts for nine possibilities, see below). The best and/or similar clusters change automatically afterwards.
 * Press `backspace` to unselect all similar clusters, and keep only best clusters (in the cluster view) selected.
 
 

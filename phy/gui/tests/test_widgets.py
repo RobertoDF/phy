@@ -1,25 +1,24 @@
-# -*- coding: utf-8 -*-
-
 """Test widgets."""
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Imports
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
+import sys
 from functools import partial
-from pathlib import Path
-from pytest import fixture, mark
 
 from phylib.utils import connect, unconnect
-from phylib.utils.testing import captured_logging
-import phy
+from pytest import fixture, mark
+
+from ..qt import QHeaderView, Qt
+from ..widgets import Barrier, IPythonView, KeyValueWidget, Table, ViewSettingsDialog
+from . import show_and_wait
 from .test_qt import _block
-from ..widgets import HTMLWidget, Table, Barrier, IPythonView, KeyValueWidget
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Fixtures
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def _assert(f, expected):
     _out = []
@@ -31,24 +30,24 @@ def _wait_until_table_ready(qtbot, table):
     b = Barrier()
     connect(b(1), event='ready', sender=table)
 
-    table.show()
     qtbot.addWidget(table)
-    qtbot.waitForWindowShown(table)
+    show_and_wait(qtbot, table)
     b.wait()
 
 
 @fixture
 def table(qtbot):
-    columns = ["id", "count"]
-    data = [{"id": i,
-             "count": 100 - 10 * i,
-             "float": float(i),
-             "is_masked": True if i in (2, 3, 5) else False,
-             } for i in range(10)]
-    table = Table(
-        columns=columns,
-        value_names=['id', 'count', {'data': ['is_masked']}],
-        data=data)
+    columns = ['id', 'count']
+    data = [
+        {
+            'id': i,
+            'count': 100 - 10 * i,
+            'float': float(i),
+            'is_masked': i in (2, 3, 5),
+        }
+        for i in range(10)
+    ]
+    table = Table(columns=columns, value_names=['id', 'count', {'data': ['is_masked']}], data=data)
     _wait_until_table_ready(qtbot, table)
 
     yield table
@@ -56,148 +55,92 @@ def table(qtbot):
     table.close()
 
 
-#------------------------------------------------------------------------------
-# Test widgets
-#------------------------------------------------------------------------------
-
-def test_widget_empty(qtbot):
-    widget = HTMLWidget()
-    widget.build()
-    widget.show()
-    qtbot.addWidget(widget)
-    qtbot.waitForWindowShown(widget)
-    widget.close()
-
-
-def test_widget_html(qtbot):
-    widget = HTMLWidget()
-    widget.builder.add_style('html, body, p {background-color: purple;}')
-    path = Path(__file__).parent.parent / 'static/styles.css'
-    widget.builder.add_style_src(path)
-    widget.builder.add_header('<!-- comment -->')
-    widget.builder.set_body('Hello world!')
-    widget.build()
-    widget.show()
-    qtbot.addWidget(widget)
-    qtbot.waitForWindowShown(widget)
-    _block(lambda: 'Hello world!' in str(widget.html))
-
-    _out = []
-
-    widget.view_source(lambda x: _out.append(x))
-    _block(lambda: _out[0].startswith('<head>') if _out else None)
-
-    # qtbot.stop()
-    widget.close()
-
-
-def test_widget_javascript_1(qtbot):
-    widget = HTMLWidget()
-    widget.builder.add_script('var number = 1;')
-    widget.build()
-    widget.show()
-    qtbot.addWidget(widget)
-    qtbot.waitForWindowShown(widget)
-    _block(lambda: widget.html is not None)
-
-    _out = []
-
-    def _callback(res):
-        _out.append(res)
-
-    widget.eval_js('number', _callback)
-    _block(lambda: _out == [1])
-
-    # Test logging from JS.
-    with captured_logging('phy.gui') as buf:
-        widget.eval_js('console.warn("hello world!");')
-        _block(lambda: 'hello world!' in buf.getvalue().lower())
-
-    # qtbot.stop()
-    widget.close()
-
-
-@mark.parametrize("event_name", ('select', 'nodebounce'))
-def test_widget_javascript_debounce(qtbot, event_name):
-    phy.gui.qt.Debouncer.delay = 300
-
-    widget = HTMLWidget(debounce_events=('select',))
-    widget.build()
-    widget.show()
-    qtbot.addWidget(widget)
-    qtbot.waitForWindowShown(widget)
-    _block(lambda: widget.html is not None)
-
-    event_code = lambda i: r'''
-    var event = new CustomEvent("phy_event", {detail: {name: '%s', data: {'i': %s}}});
-    document.dispatchEvent(event);
-    ''' % (event_name, i)
-
-    _l = []
-
-    def f(sender, *args):
-        _l.append(args)
-    connect(f, sender=widget, event=event_name)
-
-    for i in range(5):
-        widget.eval_js(event_code(i))
-        qtbot.wait(10)
-    qtbot.wait(500)
-
-    assert len(_l) == (2 if event_name == 'select' else 5)
-
-    # qtbot.stop()
-    widget.close()
-
-    phy.gui.qt.Debouncer.delay = 1
-
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Test key value widget
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def test_key_value_1(qtbot):
     widget = KeyValueWidget()
-    widget.show()
-
     qtbot.addWidget(widget)
-    qtbot.waitForWindowShown(widget)
+    show_and_wait(qtbot, widget)
 
-    widget.add_pair("my text", "some text")
-    widget.add_pair("my text multiline", "some\ntext", 'multiline')
-    widget.add_pair("my float", 3.5)
-    widget.add_pair("my int", 3)
-    widget.add_pair("my bool", True)
-    widget.add_pair("my list", [1, 5])
+    widget.add_pair('my text', 'some text')
+    widget.add_pair('my text multiline', 'some\ntext', 'multiline')
+    widget.add_pair('my float', 3.5)
+    widget.add_pair('my int', 3)
+    widget.add_pair('my bool', True)
+    widget.add_pair('my list', [1, 5])
 
     widget.get_widget('my bool').setChecked(False)
     widget.get_widget('my list[0]').setValue(2)
 
     assert widget.to_dict() == {
-        'my text': 'some text', 'my text multiline': 'some\ntext',
-        'my float': 3.5, 'my int': 3, 'my bool': False, 'my list': [2, 5]}
+        'my text': 'some text',
+        'my text multiline': 'some\ntext',
+        'my float': 3.5,
+        'my int': 3,
+        'my bool': False,
+        'my list': [2, 5],
+    }
 
     # qtbot.stop()
     widget.close()
 
 
-#------------------------------------------------------------------------------
-# Test IPython view
-#------------------------------------------------------------------------------
+def test_view_settings_dialog(qtbot):
+    fields = [
+        {
+            'name': 'use_total',
+            'label': 'Use shared total budget',
+            'default': False,
+            'vtype': 'bool',
+            'tooltip': 'Bound the work shared by all selected clusters.',
+        },
+        {
+            'name': 'total',
+            'label': 'Shared total spikes',
+            'default': 400,
+            'vtype': 'int',
+            'minimum': 1,
+            'maximum': 1000,
+            'suffix': ' spikes',
+            'enabled_by': 'use_total',
+        },
+    ]
+    dialog = ViewSettingsDialog('View settings', fields)
+    qtbot.addWidget(dialog)
 
-@mark.filterwarnings("ignore")
+    total = dialog.form.get_widget('total')
+    assert not total.isEnabled()
+    dialog.form.get_widget('use_total').setChecked(True)
+    total.setValue(600)
+
+    assert total.isEnabled()
+    assert dialog.values() == {'total': 600, 'use_total': True}
+
+
+# ------------------------------------------------------------------------------
+# Test IPython view
+# ------------------------------------------------------------------------------
+
+
+@mark.filterwarnings('ignore')
 def test_ipython_view_1(qtbot):
     view = IPythonView()
     view.show()
     view.start_kernel()
+    kernel = view.kernel
     view.stop()
+    assert not kernel.iopub_thread.thread.is_alive()
     qtbot.wait(10)
     view.close()
 
 
-@mark.filterwarnings("ignore")
+@mark.filterwarnings('ignore')
 def test_ipython_view_2(qtbot, tempdir):
     from ..gui import GUI
+
     gui = GUI(config_dir=tempdir)
     gui.set_default_actions()
 
@@ -213,9 +156,10 @@ def test_ipython_view_2(qtbot, tempdir):
     qtbot.wait(10)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Test table
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def test_barrier_1(qtbot, table):
     table.select([1])
@@ -241,24 +185,122 @@ def test_table_empty_1(qtbot):
     table.close()
 
 
+def test_table_debounce_delay(qtbot):
+    table = Table(debounce_delay=17)
+    _wait_until_table_ready(qtbot, table)
+    assert table.debouncer.delay == 17
+    table.close()
+
+
 def test_table_invalid_column(qtbot):
     table = Table(data=[{'id': 0, 'a': 'b'}], columns=['id', 'u'])
-    table.show()
     qtbot.addWidget(table)
-    qtbot.waitForWindowShown(table)
+    show_and_wait(qtbot, table)
     table.close()
 
 
 def test_table_0(qtbot, table):
+    assert table.filter_edit.focusPolicy() == Qt.NoFocus
+    table.filter_edit.clearFocus()
+    qtbot.mouseClick(table.filter_edit, Qt.LeftButton)
+    assert table.filter_edit.hasFocus()
+
+    table.filter_edit.setText('id >= 2')
+    qtbot.keyClick(table.filter_edit, Qt.Key_Return)
+    assert not table.filter_edit.hasFocus()
+
+    qtbot.mouseClick(table.filter_edit, Qt.LeftButton)
+    table.filter_edit.setText('id >= 3')
+    qtbot.keyClick(table.filter_edit, Qt.Key_Escape)
+    assert not table.filter_edit.hasFocus()
+    assert table.filter_edit.text() == ''
     _assert(table.get_selected, [])
+
+    qtbot.mouseClick(table.filter_edit, Qt.LeftButton)
+    assert table.filter_edit.hasFocus()
+    index = table._proxy.index(0, 0)
+    qtbot.mouseClick(
+        table.table_view.viewport(),
+        Qt.LeftButton,
+        pos=table.table_view.visualRect(index).center(),
+    )
+    assert not table.filter_edit.hasFocus()
 
 
 def test_table_1(qtbot, table):
-
     assert table.is_ready()
 
     table.select([1, 2])
     _assert(table.get_selected, [1, 2])
+
+
+def test_table_batch_update_fits_once(table):
+    fit_calls = []
+    table._fit_columns = lambda: fit_calls.append(True)
+
+    with table.batch_update():
+        table.add({'id': 10, 'count': 10})
+        table.change({'id': 10, 'count': 11})
+        table.remove([10])
+
+    assert fit_calls == [True]
+
+
+def test_table_add_remove_and_sparse_change(table):
+    table.select([1, 2])
+    table.add_remove([{'id': 10, 'count': 10}], [1, 3])
+
+    assert table._model.row_by_id(1) is None
+    assert table._model.row_by_id(3) is None
+    assert table._model.row_by_id(10)['count'] == 10
+    assert table.get_selected_ids() == [2]
+
+    fit_calls = []
+    table._fit_columns = lambda: fit_calls.append(True)
+    table.change({'id': 10, 'count': 11})
+    table.change({'id': 999, 'count': 12})
+
+    assert table._model.row_by_id(10)['count'] == 11
+    assert fit_calls == [True]
+
+
+def test_table_row_height_is_fitted_once(qtbot):
+    table = Table()
+    _wait_until_table_ready(qtbot, table)
+    fit_calls = []
+    table.table_view.resizeRowsToContents = lambda: fit_calls.append(True)
+
+    table.add({'id': 1})
+    table.add({'id': 2})
+    table.remove_all_and_add([{'id': 3}])
+
+    assert fit_calls == [True]
+    assert table.table_view.verticalHeader().sectionResizeMode(0) == QHeaderView.Fixed
+    table.close()
+
+
+def test_table_row_control_right_click(qtbot, table):
+    clicked = []
+
+    @connect(sender=table)
+    def on_row_right_click(sender, row_id):
+        clicked.append(row_id)
+
+    table.select([1, 2])
+    index = table._proxy.index(4, 0)
+    pos = table.table_view.visualRect(index).center()
+
+    # A plain right-click is non-mutating and reserved for a future context menu.
+    qtbot.mouseClick(table.table_view.viewport(), Qt.RightButton, pos=pos)
+    qtbot.wait(10)
+    assert clicked == []
+    _assert(table.get_selected, [1, 2])
+
+    control_modifier = Qt.MetaModifier if sys.platform == 'darwin' else Qt.ControlModifier
+    qtbot.mouseClick(table.table_view.viewport(), Qt.RightButton, control_modifier, pos=pos)
+    _block(lambda: clicked == [4])
+    _assert(table.get_selected, [1, 2])
+    unconnect(on_row_right_click)
 
 
 def test_table_scroll(qtbot, table):
@@ -319,6 +361,89 @@ def test_table_nav_0(qtbot, table):
     _assert(table.get_selected, [4])
 
 
+def test_table_navigation_skip_masked_policy(qtbot, table):
+    # Masked rows are skipped by default, including by the callback-compatible
+    # navigable-ID API. The unfiltered ID API remains unchanged.
+    _assert(table.get_ids, list(range(10)))
+    _assert(table.get_navigable_ids, [0, 1, 4, 6, 7, 8, 9])
+
+    table.select([1])
+    table.next()
+    _assert(table.get_selected, [4])
+    table.previous()
+    _assert(table.get_selected, [1])
+
+    table.first()
+    _assert(table.get_selected, [0])
+    table.previous()
+    _assert(table.get_selected, [0])
+
+    table.last()
+    _assert(table.get_selected, [9])
+    table.next()
+    _assert(table.get_selected, [9])
+
+
+def test_table_navigation_include_masked_and_runtime_toggle(qtbot, table):
+    table.skip_masked = False
+    _assert(table.get_navigable_ids, list(range(10)))
+
+    table.select([1])
+    table.next()
+    _assert(table.get_selected, [2])
+    table.next()
+    _assert(table.get_selected, [3])
+
+    # Changing the policy takes effect immediately and a manually selected
+    # masked row remains a valid anchor for sibling navigation.
+    table.skip_masked = True
+    table.next()
+    _assert(table.get_selected, [4])
+
+    table.skip_masked = False
+    table.previous()
+    _assert(table.get_selected, [3])
+
+
+def test_table_navigation_include_masked_from_constructor(qtbot):
+    table = Table(
+        value_names=['id', {'data': ['is_masked']}],
+        data=[{'id': 0}, {'id': 1, 'is_masked': True}, {'id': 2}],
+        skip_masked=False,
+    )
+    _wait_until_table_ready(qtbot, table)
+
+    _assert(table.get_navigable_ids, [0, 1, 2])
+    table.select([0])
+    table.next()
+    _assert(table.get_selected, [1])
+
+    table.close()
+
+
+def test_table_navigation_respects_visible_sort_and_filter(qtbot, table):
+    table.sort_by('count', 'asc')
+    table.filter('id >= 2 && id <= 7')
+    _assert(table.get_ids, [7, 6, 5, 4, 3, 2])
+    _assert(table.get_navigable_ids, [7, 6, 4])
+
+    table.first()
+    _assert(table.get_selected, [7])
+    table.next()
+    _assert(table.get_selected, [6])
+    table.next()
+    _assert(table.get_selected, [4])
+    table.next()
+    _assert(table.get_selected, [4])
+
+    table.skip_masked = False
+    _assert(table.get_navigable_ids, [7, 6, 5, 4, 3, 2])
+    table.next()
+    _assert(table.get_selected, [3])
+    table.last()
+    _assert(table.get_selected, [2])
+
+
 def test_table_nav_1(qtbot, table):
     _sel = []
 
@@ -372,9 +497,45 @@ def test_table_remove_all_and_add_1(qtbot, table):
     _assert(table.get_ids, [])
 
 
-def test_table_remove_all_and_add_2(qtbot, table):
-    table.remove_all_and_add({"id": 1000})
+def test_table_remove_all_and_add_keeps_column_width(qtbot, table):
+    header = table.table_view.horizontalHeader()
+    width = header.sectionSize(1)
+
+    table.remove_all_and_add({'id': 1000, 'count': 'x' * 100})
+    qtbot.wait(1)
+
     _assert(table.get_ids, [1000])
+    assert header.sectionSize(1) == width
+    assert header.sectionResizeMode(1) == QHeaderView.Interactive
+
+
+def test_table_remove_all_and_add_without_fitting(qtbot, table, monkeypatch):
+    table.sort_by('count', 'asc')
+    table.select([1])
+    fit_calls = []
+    monkeypatch.setattr(table, '_fit_columns', lambda: fit_calls.append(True))
+
+    table.remove_all_and_add(
+        [
+            {'id': 20, 'count': 'a' * 100},
+            {'id': 21, 'count': 'c' * 100},
+            {'id': 22, 'count': 'b' * 100},
+        ],
+        fit_columns=False,
+    )
+    qtbot.wait(1)
+
+    _assert(table.get_ids, [20, 22, 21])
+    _assert(table.get_selected, [])
+    _assert(table.get_current_sort, ['count', 'asc'])
+    assert fit_calls == []
+
+    table.remove_all_and_add([], fit_columns=False)
+    qtbot.wait(1)
+
+    _assert(table.get_ids, [])
+    _assert(table.get_current_sort, ['count', 'asc'])
+    assert fit_calls == []
 
 
 def test_table_add_change_remove(qtbot, table):
@@ -405,12 +566,153 @@ def test_table_change_and_sort_2(qtbot, table):
     _assert(table.get_ids, [9, 8, 7, 6, 4, 3, 2, 1, 0, 5])
 
 
+def test_table_sort_numeric_strings(qtbot):
+    # The `ch` column of the cluster view holds channel labels, which are strings.
+    # A plain string comparison sorts '10' before '2', so numeric strings have to be
+    # compared as numbers.
+    data = [{'id': i, 'ch': ch} for i, ch in enumerate(['2', '10', '1', '21', '3'])]
+    table = Table(columns=['id', 'ch'], value_names=['id', 'ch'], data=data)
+    _wait_until_table_ready(qtbot, table)
+
+    table.sort_by('ch', 'asc')
+    _assert(table.get_ids, [2, 0, 4, 1, 3])
+
+    table.sort_by('ch', 'desc')
+    _assert(table.get_ids, [3, 1, 4, 0, 2])
+
+    table.close()
+
+
+def test_table_sort_mixed_strings(qtbot):
+    # In a column that mixes numbers and free text, the numbers come first in numeric
+    # order and the remaining entries keep their string ordering.
+    data = [{'id': i, 'label': label} for i, label in enumerate(['mua', '10', 'good', '2'])]
+    table = Table(columns=['id', 'label'], value_names=['id', 'label'], data=data)
+    _wait_until_table_ready(qtbot, table)
+
+    table.sort_by('label', 'asc')
+    _assert(table.get_ids, [3, 1, 2, 0])
+
+    table.close()
+
+
+def test_table_change_metadata_preserves_sort(qtbot):
+    data = [
+        {'id': 0, 'count': 30, 'group': 'noise'},
+        {'id': 1, 'count': 10, 'group': 'noise'},
+        {'id': 2, 'count': 20, 'group': 'noise'},
+    ]
+    table = Table(
+        columns=['id', 'count'],
+        value_names=['id', 'count', {'data': ['group']}],
+        data=data,
+    )
+    _wait_until_table_ready(qtbot, table)
+
+    table.sort_by('count', 'desc')
+    _assert(table.get_ids, [0, 2, 1])
+    _assert(table.get_current_sort, ['count', 'desc'])
+
+    table.change([{'id': 1, 'group': 'good'}])
+    _assert(table.get_ids, [0, 2, 1])
+    _assert(table.get_current_sort, ['count', 'desc'])
+
+    table.close()
+
+
 def test_table_filter(qtbot, table):
-    table.filter("id == 5")
+    table.filter('id == 5')
     _assert(table.get_ids, [5])
 
-    table.filter("count == 80")
+    table.filter('count == 80')
     _assert(table.get_ids, [2])
 
     table.filter()
     _assert(table.get_ids, list(range(10)))
+
+
+def test_table_filter_comparison_operators(qtbot, table):
+    table.filter('count > 80')
+    _assert(table.get_ids, [0, 1])
+
+    table.filter('count >= 80')
+    _assert(table.get_ids, [0, 1, 2])
+
+    table.filter('count < 80')
+    _assert(table.get_ids, list(range(3, 10)))
+
+    table.filter('count <= 80')
+    _assert(table.get_ids, list(range(2, 10)))
+
+    table.filter('id != 5')
+    _assert(table.get_ids, [i for i in range(10) if i != 5])
+
+
+def test_table_filter_combined_expression(qtbot, table):
+    table.filter('(count >= 50) && id != 3')
+    _assert(table.get_ids, [0, 1, 2, 4, 5])
+
+
+def test_table_filter_or_expression(qtbot, table):
+    table.filter('(id == 1) || (id == 3)')
+    _assert(table.get_ids, [1, 3])
+
+
+def test_table_filter_operator_precedence(qtbot, table):
+    table.filter('(id == 1 || id == 3) && count < 90')
+    _assert(table.get_ids, [3])
+
+
+def test_table_filter_invalid_expression_shows_all_rows(qtbot, table):
+    table.filter('id ===')
+    _assert(table.get_ids, list(range(10)))
+
+
+def test_table_filter_missing_field_shows_all_rows(qtbot, table):
+    table.filter('missing == 1')
+    _assert(table.get_ids, list(range(10)))
+
+
+def test_table_filter_string_and_null_values(qtbot):
+    data = [
+        {'id': 0, 'group': 'good', 'label': None},
+        {'id': 1, 'group': 'mua', 'label': 'x'},
+        {'id': 2, 'group': 'noise', 'label': None},
+    ]
+    table = Table(
+        columns=['id', 'label'],
+        value_names=['id', 'label', {'data': ['group']}],
+        data=data,
+    )
+    _wait_until_table_ready(qtbot, table)
+
+    table.filter("group == 'good'")
+    _assert(table.get_ids, [0])
+
+    table.filter("group != 'noise'")
+    _assert(table.get_ids, [0, 1])
+
+    table.filter("label == 'x'")
+    _assert(table.get_ids, [1])
+
+    table.filter('label == null')
+    _assert(table.get_ids, [0, 2])
+
+    table.filter('label != null')
+    _assert(table.get_ids, [1])
+
+    table.close()
+
+
+def test_table_filter_event_emits_visible_ids(qtbot, table):
+    emitted = []
+
+    @connect(sender=table)
+    def on_table_filter(sender, row_ids):
+        emitted.append(row_ids)
+
+    table.filter('count >= 80')
+    _assert(table.get_ids, [0, 1, 2])
+    _block(lambda: emitted == [[0, 1, 2]])
+
+    unconnect(on_table_filter)

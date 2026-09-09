@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """Qt dock window."""
 
 
@@ -10,15 +8,16 @@
 try:  # pragma: no cover
     from collections.abc import Mapping  # noqa
 except ImportError:  # pragma: no cover
-    from collections import Mapping  # noqa
-from copy import deepcopy
+    from collections.abc import Mapping  # noqa
 import inspect
 import json
 import logging
-from pathlib import Path
 import shutil
+from copy import deepcopy
+from pathlib import Path
 
 from phylib.utils import Bunch, _bunchify, load_json, save_json
+
 from phy.utils import ensure_dir_exists, phy_config_dir
 
 logger = logging.getLogger(__name__)
@@ -27,6 +26,7 @@ logger = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 # GUI state
 # -----------------------------------------------------------------------------
+
 
 def _get_default_state_path(gui):
     """Return the path to the default state.json for a given GUI."""
@@ -43,10 +43,10 @@ def _gui_state_path(gui_name, config_dir=None):
 def _load_state(path):
     """Load a GUI state from a JSON file."""
     try:
-        logger.debug("Load %s for GUIState.", path)
+        logger.debug('Load %s for GUIState.', path)
         data = load_json(str(path))
     except json.decoder.JSONDecodeError as e:  # pragma: no cover
-        logger.warning("Error decoding JSON: %s", e)
+        logger.warning('Error decoding JSON: %s', e)
         data = {}
     return _bunchify(data)
 
@@ -56,8 +56,9 @@ def _filter_nested_dict(value, key=None, search_terms=None):
 
     # key is None for the root only.
     # Expression used to test whether we keep a key or not.
-    keep = lambda k: k is None or (
-        (not search_terms or k in search_terms) and not k.startswith('_'))
+    keep = lambda k: (
+        k is None or ((not search_terms or k in search_terms) and not k.startswith('_'))
+    )
     # Process leaves.
     if not isinstance(value, Mapping):
         return value if keep(key) else None
@@ -79,6 +80,18 @@ def _recursive_update(d, u):
         else:
             d[k] = v
     return d
+
+
+def _nested_keys(value, prefix=''):
+    """Return dotted paths for all leaves in a nested mapping."""
+    out = set()
+    for key, item in value.items():
+        path = f'{prefix}.{key}' if prefix else key
+        if isinstance(item, Mapping):
+            out.update(_nested_keys(item, path))
+        else:
+            out.add(path)
+    return out
 
 
 def _get_local_data(d, local_keys):
@@ -133,9 +146,12 @@ class GUIState(Bunch):
         in the local state, and not the global state.
 
     """
+
     def __init__(
-            self, path=None, local_path=None, default_state_path=None, local_keys=None, **kwargs):
-        super(GUIState, self).__init__(**kwargs)
+        self, path=None, local_path=None, default_state_path=None, local_keys=None, **kwargs
+    ):
+        super().__init__(**kwargs)
+        self._loaded_local_keys = set()
         self._path = Path(path) if path else None
         if self._path:
             ensure_dir_exists(str(self._path.parent))
@@ -152,7 +168,11 @@ class GUIState(Bunch):
 
     def get_view_state(self, view):
         """Return the state of a view instance."""
-        return self.get(view.name, Bunch())
+        state = deepcopy(self.get(view.name, Bunch()))
+        for key in getattr(view, 'local_state_attrs', ()):
+            if f'{view.name}.{key}' not in self._loaded_local_keys:
+                state.pop(key, None)
+        return state
 
     def update_view_state(self, view, state):
         """Update the state of a view instance.
@@ -168,19 +188,26 @@ class GUIState(Bunch):
         if name not in self:
             self[name] = Bunch()
         self[name].update(state)
-        logger.debug("Update GUI state for %s", name)
+        local_keys = {
+            key.split('.', 1)[1] for key in self._local_keys if key.startswith(f'{name}.')
+        }
+        if local_keys:
+            self._loaded_local_keys.update(f'{name}.{key}' for key in state if key in local_keys)
+        logger.debug('Update GUI state for %s', name)
 
     def _copy_default_state(self):
         """Copy the default GUI state to the user directory."""
 
         if self._default_state_path and self._default_state_path.exists():
             logger.debug(
-                "The GUI state file `%s` doesn't exist, creating a default one...", self._path)
+                "The GUI state file `%s` doesn't exist, creating a default one...", self._path
+            )
             shutil.copy(self._default_state_path, self._path)
-            logger.info("Copied %s to %s.", self._default_state_path, self._path)
+            logger.info('Copied %s to %s.', self._default_state_path, self._path)
         elif self._default_state_path:  # pragma: no cover
             logger.warning(
-                "Could not copy non-existing default state file %s.", self._default_state_path)
+                'Could not copy non-existing default state file %s.', self._default_state_path
+            )
 
     def add_local_keys(self, keys):
         """Add local keys."""
@@ -199,7 +226,9 @@ class GUIState(Bunch):
         # After having loaded the global state, load the local state if it exists.
         # If values already exist, they are updated.
         if self._local_path and self._local_path.exists():
-            _recursive_update(self, _load_state(self._local_path))
+            local_data = _load_state(self._local_path)
+            self._loaded_local_keys = _nested_keys(local_data)
+            _recursive_update(self, local_data)
 
     @property
     def _global_data(self):
@@ -215,7 +244,7 @@ class GUIState(Bunch):
     def _save_global(self):
         """Save the entire GUIState to the global file."""
         path = self._path
-        logger.debug("Save global GUI state to `%s`.", path)
+        logger.debug('Save global GUI state to `%s`.', path)
         save_json(str(path), self._global_data)
 
     def _save_local(self):
@@ -229,7 +258,7 @@ class GUIState(Bunch):
             return
         assert self._local_path
 
-        logger.debug("Save local GUI state to `%s`.", path)
+        logger.debug('Save local GUI state to `%s`.', path)
         save_json(str(path), self._local_data)
 
     def save(self):

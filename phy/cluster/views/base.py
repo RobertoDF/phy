@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """Manual clustering views."""
 
 
@@ -7,18 +5,18 @@
 # Imports
 # -----------------------------------------------------------------------------
 
-from functools import partial
 import gc
 import logging
+from functools import partial
 
 import numpy as np
-
-from phylib.utils import Bunch, connect, unconnect, emit
+from phylib.utils import Bunch, connect, emit, unconnect
 from phylib.utils.geometry import range_transform
+
 from phy.cluster._utils import RotatingProperty
 from phy.gui import Actions
-from phy.gui.qt import AsyncCaller, screenshot, screenshot_default_path, thread_pool, Worker
-from phy.plot import PlotCanvas, NDC, extend_bounds
+from phy.gui.qt import AsyncCaller, Worker, screenshot, screenshot_default_path, thread_pool
+from phy.plot import NDC, PlotCanvas, extend_bounds
 from phy.utils.color import ClusterColorSelector
 
 logger = logging.getLogger(__name__)
@@ -27,6 +25,7 @@ logger = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 # Manual clustering view
 # -----------------------------------------------------------------------------
+
 
 def _get_bunch_bounds(bunch):
     """Return the data bounds of a bunch."""
@@ -37,7 +36,7 @@ def _get_bunch_bounds(bunch):
     return (xmin, ymin, xmax, ymax)
 
 
-class ManualClusteringView(object):
+class ManualClusteringView:
     """Base class for clustering views.
 
     Typical property objects:
@@ -58,6 +57,7 @@ class ManualClusteringView(object):
     - `toggle_auto_update(view)`
 
     """
+
     default_shortcuts = {}
     default_snippets = {}
     auto_update = True  # automatically update the view when the cluster selection changes
@@ -65,10 +65,13 @@ class ManualClusteringView(object):
     plot_canvas_class = PlotCanvas
     ex_status = ''  # the GUI can update this to
     max_n_clusters = 0  # By default, show all clusters.
+    defer_hidden_updates = False
 
     def __init__(self, shortcuts=None, **kwargs):
         self._lock = None
         self._closed = False
+        self._dock_visible = True
+        self._pending_selection = None
         self.cluster_ids = ()
 
         # Load default shortcuts, and override with any user shortcuts.
@@ -108,7 +111,6 @@ class ManualClusteringView(object):
         To override.
 
         """
-        pass
 
     def _update_axes(self):
         """Update the axes."""
@@ -136,7 +138,7 @@ class ManualClusteringView(object):
     # -------------------------------------------------------------------------
 
     def on_select(self, cluster_ids=None, **kwargs):
-        """Callback function when clusters are selected. May be overriden."""
+        """Callback function when clusters are selected. May be overridden."""
         self.cluster_ids = cluster_ids
         if not cluster_ids:
             return
@@ -152,9 +154,19 @@ class ManualClusteringView(object):
         assert isinstance(cluster_ids, list)
         if not cluster_ids:
             return
-        # Maximum number of clusters that can be displayed in the view, for performance reasons.
+        # Limit the number of displayed clusters for performance reasons. Keep the
+        # selection order so that a large selection still refreshes the view rather
+        # than leaving its previous contents on screen.
         if self.max_n_clusters and len(cluster_ids) > self.max_n_clusters:
+            cluster_ids = cluster_ids[: self.max_n_clusters]
+        if self.defer_hidden_updates and not self._dock_visible:
+            # Keep the public selection state current while retaining only the
+            # latest small payload needed to redraw the view when it is shown.
+            cluster_ids = list(cluster_ids)
+            self.cluster_ids = cluster_ids
+            self._pending_selection = (cluster_ids, dict(kwargs))
             return
+        self._pending_selection = None
 
         # The lock is used so that two different background threads do not access the same
         # view simultaneously, which can lead to conflicts, errors in the plotting code,
@@ -205,6 +217,7 @@ class ManualClusteringView(object):
             emit('is_busy', self, False)
             self._lock = None
             self.update_status()
+            self._flush_pending_selection()
 
         # Start the task on the thread pool, and let the OpenGL canvas know that we're
         # starting to record all OpenGL calls instead of executing them immediately.
@@ -213,7 +226,7 @@ class ManualClusteringView(object):
 
         # HACK: disable threading mechanism for now
         # if getattr(gui, '_enable_threading', True):
-        if 0:   # pragma: no cover
+        if 0:  # pragma: no cover
             # This is only for OpenGL views.
             self.canvas.set_lazy(True)
             thread_pool().start(worker)
@@ -222,8 +235,21 @@ class ManualClusteringView(object):
             worker.run()
             self._lock = None
 
+    def _flush_pending_selection(self):
+        """Render the latest selection deferred while this view was hidden."""
+        if not self._pending_selection or not self._dock_visible or self._lock or self._closed:
+            return
+        cluster_ids, kwargs = self._pending_selection
+        self._pending_selection = None
+        self.on_select_threaded(
+            self,
+            cluster_ids=cluster_ids,
+            gui=self.gui,
+            **kwargs,
+        )
+
     def on_cluster(self, up):
-        """Callback function when a clustering action occurs. May be overriden.
+        """Callback function when a clustering action occurs. May be overridden.
 
         Note: this method is called *before* on_select() so as to give a chance to the view
         to update itself before the selection of the new clusters.
@@ -250,17 +276,33 @@ class ManualClusteringView(object):
 
         gui.add_view(self, position=self._default_position)
         self.gui = gui
+        self._dock_visible = self.dock.isVisible()
+
+        def on_visibility_changed(visible):
+            self._dock_visible = visible
+            if visible:
+                self._flush_pending_selection()
+
+        self.dock.visibilityChanged.connect(on_visibility_changed)
+
+        local_keys = [f'{self.name}.{key}' for key in self.local_state_attrs]
+        gui.state.add_local_keys(local_keys)
 
         # Set the view state.
         self.set_state(gui.state.get_view_state(self))
 
         self.actions = Actions(
-            gui, name=self.name, view=self,
-            default_shortcuts=shortcuts, default_snippets=self.default_snippets)
+            gui,
+            name=self.name,
+            view=self,
+            default_shortcuts=shortcuts,
+            default_snippets=self.default_snippets,
+        )
 
         # Freeze and unfreeze the view when selecting clusters.
         self.actions.add(
-            self.toggle_auto_update, checkable=True, checked=self.auto_update, show_shortcut=False)
+            self.toggle_auto_update, checkable=True, checked=self.auto_update, show_shortcut=False
+        )
         self.actions.add(self.screenshot, show_shortcut=False)
         self.actions.add(self.close, show_shortcut=False)
         self.actions.separator()
@@ -273,8 +315,10 @@ class ManualClusteringView(object):
         def on_close_view(view_, gui):
             if view_ != self:
                 return
-            logger.debug("Close view %s.", self.name)
+            logger.debug('Close view %s.', self.name)
             self._closed = True
+            self._pending_selection = None
+            self.dock.visibilityChanged.disconnect(on_visibility_changed)
             gui.remove_menu(self.name)
             unconnect(on_select)
             gui.state.update_view_state(self, self.state)
@@ -296,12 +340,12 @@ class ManualClusteringView(object):
 
     @property
     def status(self):
-        """To be overriden."""
+        """To be overridden."""
         return ''
 
     def update_status(self):
         if hasattr(self, 'dock'):
-            self.dock.set_status('%s %s' % (self.status, self.ex_status))
+            self.dock.set_status(f'{self.status} {self.ex_status}')
 
     # -------------------------------------------------------------------------
     # Misc public methods
@@ -309,7 +353,7 @@ class ManualClusteringView(object):
 
     def toggle_auto_update(self, checked):
         """When on, the view is automatically updated when the cluster selection changes."""
-        logger.debug("%s auto update for %s.", 'Enable' if checked else 'Disable', self.name)
+        logger.debug('%s auto update for %s.', 'Enable' if checked else 'Disable', self.name)
         self.auto_update = checked
         emit('toggle_auto_update', self, checked)
 
@@ -322,7 +366,7 @@ class ManualClusteringView(object):
     @property
     def state(self):
         """View state, a Bunch instance automatically persisted in the GUI state when the
-        GUI is closed. To be overriden."""
+        GUI is closed. To be overridden."""
         attrs = set(self.state_attrs + self.local_state_attrs)
         return Bunch({key: getattr(self, key, None) for key in attrs})
 
@@ -331,10 +375,10 @@ class ManualClusteringView(object):
 
         The passed object is the persisted `self.state` bunch.
 
-        May be overriden.
+        May be overridden.
 
         """
-        logger.debug("Set state for %s.", getattr(self, 'name', self.__class__.__name__))
+        logger.debug('Set state for %s.', getattr(self, 'name', self.__class__.__name__))
         for k, v in state.items():
             setattr(self, k, v)
 
@@ -356,18 +400,19 @@ class ManualClusteringView(object):
 # Mixins for manual clustering views
 # -----------------------------------------------------------------------------
 
-class BaseWheelMixin(object):
+
+class BaseWheelMixin:
     def on_mouse_wheel(self, e):
         pass
 
 
-class BaseGlobalView(object):
+class BaseGlobalView:
     """A view that shows all clusters instead of the selected clusters.
 
     This view shows the clusters in the same order as in the cluster view. It reacts to sorting
     and filtering events.
 
-    The `get_cluster_data()` method (to be overriden) must return a list of Bunch instances
+    The `get_cluster_data()` method (to be overridden) must return a list of Bunch instances
     with each cluster's data, but also the attributes `cluster_rel`, `cluster_idx`, `cluster_id`.
 
     """
@@ -420,11 +465,10 @@ class BaseGlobalView(object):
 
 
 class BaseColorView(BaseWheelMixin):
-    """Provide facilities to add and select color schemes in the view.
-    """
+    """Provide facilities to add and select color schemes in the view."""
 
     def __init__(self, *args, **kwargs):
-        super(BaseColorView, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.state_attrs += ('color_scheme',)
 
         # Color schemes.
@@ -432,8 +476,14 @@ class BaseColorView(BaseWheelMixin):
         self.add_color_scheme(fun=0, name='blank', colormap='blank', categorical=True)
 
     def add_color_scheme(
-            self, fun=None, name=None, cluster_ids=None,
-            colormap=None, categorical=None, logarithmic=None):
+        self,
+        fun=None,
+        name=None,
+        cluster_ids=None,
+        colormap=None,
+        categorical=None,
+        logarithmic=None,
+    ):
         """Add a color scheme to the view. Can be used as follows:
 
         ```python
@@ -445,24 +495,33 @@ class BaseColorView(BaseWheelMixin):
         """
         if fun is None:
             return partial(
-                self.add_color_scheme, name=name, cluster_ids=cluster_ids,
-                colormap=colormap, categorical=categorical, logarithmic=logarithmic)
+                self.add_color_scheme,
+                name=name,
+                cluster_ids=cluster_ids,
+                colormap=colormap,
+                categorical=categorical,
+                logarithmic=logarithmic,
+            )
         field = name or fun.__name__
         cs = ClusterColorSelector(
-            fun, cluster_ids=cluster_ids,
-            colormap=colormap, categorical=categorical, logarithmic=logarithmic)
+            fun,
+            cluster_ids=cluster_ids,
+            colormap=colormap,
+            categorical=categorical,
+            logarithmic=logarithmic,
+        )
         self.color_schemes.add(field, cs)
 
     def get_cluster_colors(self, cluster_ids, alpha=1.0):
         """Return the cluster colors depending on the currently-selected color scheme."""
         cs = self.color_schemes.get()
         if cs is None:  # pragma: no cover
-            raise RuntimeError("Make sure that at least a color scheme is added.")
+            raise RuntimeError('Make sure that at least a color scheme is added.')
         return cs.get_colors(cluster_ids, alpha=alpha)
 
     def _neighbor_color_scheme(self, dir=+1):
         name = self.color_schemes._neighbor(dir=dir)
-        logger.debug("Switch to `%s` color scheme in %s.", name, self.__class__.__name__)
+        logger.debug('Switch to `%s` color scheme in %s.', name, self.__class__.__name__)
         self.update_color()
         self.update_select_color()
         self.update_status()
@@ -476,12 +535,10 @@ class BaseColorView(BaseWheelMixin):
         self._neighbor_color_scheme(-1)
 
     def update_color(self):
-        """Update the cluster colors depending on the current color scheme. To be overriden."""
-        pass
+        """Update the cluster colors depending on the current color scheme. To be overridden."""
 
     def update_select_color(self):
         """Update the cluster colors after the cluster selection changes."""
-        pass
 
     @property
     def color_scheme(self):
@@ -491,13 +548,13 @@ class BaseColorView(BaseWheelMixin):
     @color_scheme.setter
     def color_scheme(self, color_scheme):
         """Change the current color scheme."""
-        logger.debug("Set color scheme to %s.", color_scheme)
+        logger.debug('Set color scheme to %s.', color_scheme)
         self.color_schemes.set(color_scheme)
         self.update_color()
         self.update_status()
 
     def attach(self, gui):
-        super(BaseColorView, self).attach(gui)
+        super().attach(gui)
         # Set the current color scheme to the GUI state color scheme (automatically set
         # in self.color_scheme).
         self.color_schemes.set(self.color_scheme)
@@ -506,13 +563,17 @@ class BaseColorView(BaseWheelMixin):
         def _make_color_scheme_action(cs):
             def callback():
                 self.color_scheme = cs
+
             return callback
 
         for cs in self.color_schemes.keys():
-            name = 'Change color scheme to %s' % cs
+            name = f'Change color scheme to {cs}'
             self.actions.add(
-                _make_color_scheme_action(cs), show_shortcut=False,
-                name=name, view_submenu='Change color scheme')
+                _make_color_scheme_action(cs),
+                show_shortcut=False,
+                name=name,
+                view_submenu='Change color scheme',
+            )
 
         self.actions.add(self.next_color_scheme)
         self.actions.add(self.previous_color_scheme)
@@ -520,7 +581,7 @@ class BaseColorView(BaseWheelMixin):
 
     def on_mouse_wheel(self, e):  # pragma: no cover
         """Change the scaling with the wheel."""
-        super(BaseColorView, self).on_mouse_wheel(e)
+        super().on_mouse_wheel(e)
         if e.modifiers == ('Shift',):
             if e.delta > 0:
                 self.next_color_scheme()
@@ -532,6 +593,7 @@ class ScalingMixin(BaseWheelMixin):
     """Provide features to change the scaling.
 
     Implement increase, decrease, reset actions, as well as control+wheel shortcut."""
+
     _scaling_param_increment = 1.1
     _scaling_param_min = 1e-3
     _scaling_param_max = 1e3
@@ -539,7 +601,7 @@ class ScalingMixin(BaseWheelMixin):
     _scaling_modifiers = ('Control',)
 
     def attach(self, gui):
-        super(ScalingMixin, self).attach(gui)
+        super().attach(gui)
         self.actions.add(self.increase)
         self.actions.add(self.decrease)
         self.actions.add(self.reset_scaling)
@@ -547,7 +609,7 @@ class ScalingMixin(BaseWheelMixin):
 
     def on_mouse_wheel(self, e):  # pragma: no cover
         """Change the scaling with the wheel."""
-        super(ScalingMixin, self).on_mouse_wheel(e)
+        super().on_mouse_wheel(e)
         if e.modifiers == self._scaling_modifiers:
             if e.delta > 0:
                 self.increase()
@@ -555,24 +617,26 @@ class ScalingMixin(BaseWheelMixin):
                 self.decrease()
 
     def _get_scaling_value(self):  # pragma: no cover
-        """Return the scaling parameter. May be overriden."""
+        """Return the scaling parameter. May be overridden."""
         return self.scaling
 
     def _set_scaling_value(self, value):  # pragma: no cover
-        """Set the scaling parameter. May be overriden."""
+        """Set the scaling parameter. May be overridden."""
         self.scaling = value
 
     def increase(self):
         """Increase the scaling parameter."""
         value = self._get_scaling_value()
-        self._set_scaling_value(min(
-            self._scaling_param_max, value * self._scaling_param_increment))
+        self._set_scaling_value(
+            min(self._scaling_param_max, value * self._scaling_param_increment)
+        )
 
     def decrease(self):
         """Decrease the scaling parameter."""
         value = self._get_scaling_value()
-        self._set_scaling_value(max(
-            self._scaling_param_min, value / self._scaling_param_increment))
+        self._set_scaling_value(
+            max(self._scaling_param_min, value / self._scaling_param_increment)
+        )
 
     def reset_scaling(self):
         """Reset the scaling to the default value."""
@@ -580,14 +644,14 @@ class ScalingMixin(BaseWheelMixin):
 
 
 class MarkerSizeMixin(BaseWheelMixin):
-    _marker_size = 5.
-    _default_marker_size = 5.
+    _marker_size = 5.0
+    _default_marker_size = 5.0
     _marker_size_min = 1e-2
     _marker_size_max = 1e2
     _marker_size_increment = 1.1
 
     def __init__(self, *args, **kwargs):
-        super(MarkerSizeMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.state_attrs += ('marker_size',)
         self.local_state_attrs += ()
 
@@ -607,7 +671,7 @@ class MarkerSizeMixin(BaseWheelMixin):
         self.canvas.update()
 
     def attach(self, gui):
-        super(MarkerSizeMixin, self).attach(gui)
+        super().attach(gui)
         self.actions.add(self.increase_marker_size)
         self.actions.add(self.decrease_marker_size)
         self.actions.add(self.reset_marker_size)
@@ -616,12 +680,14 @@ class MarkerSizeMixin(BaseWheelMixin):
     def increase_marker_size(self):
         """Increase the scaling parameter."""
         self.marker_size = min(
-            self._marker_size_max, self.marker_size * self._marker_size_increment)
+            self._marker_size_max, self.marker_size * self._marker_size_increment
+        )
 
     def decrease_marker_size(self):
         """Decrease the scaling parameter."""
         self.marker_size = max(
-            self._marker_size_min, self.marker_size / self._marker_size_increment)
+            self._marker_size_min, self.marker_size / self._marker_size_increment
+        )
 
     def reset_marker_size(self):
         """Reset the scaling to the default value."""
@@ -629,7 +695,7 @@ class MarkerSizeMixin(BaseWheelMixin):
 
     def on_mouse_wheel(self, e):  # pragma: no cover
         """Change the scaling with the wheel."""
-        super(MarkerSizeMixin, self).on_mouse_wheel(e)
+        super().on_mouse_wheel(e)
         if e.modifiers == ('Alt',):
             if e.delta > 0:
                 self.increase_marker_size()
@@ -637,10 +703,10 @@ class MarkerSizeMixin(BaseWheelMixin):
                 self.decrease_marker_size()
 
 
-class LassoMixin(object):
+class LassoMixin:
     def on_request_split(self, sender=None):
         """Return the spikes enclosed by the lasso."""
-        if (self.canvas.lasso.count < 3 or not len(self.cluster_ids)):  # pragma: no cover
+        if self.canvas.lasso.count < 3 or not len(self.cluster_ids):  # pragma: no cover
             return np.array([], dtype=np.int64)
 
         # Get all points from all clusters.
@@ -661,7 +727,7 @@ class LassoMixin(object):
             pos.append(points)
             spike_ids.append(bunch.spike_ids)
         if not pos:  # pragma: no cover
-            logger.warning("Empty lasso.")
+            logger.warning('Empty lasso.')
             return np.array([])
         pos = np.vstack(pos)
         pos = range_transform([self.data_bounds], [NDC], pos)
@@ -673,5 +739,5 @@ class LassoMixin(object):
         return np.unique(spike_ids[ind])
 
     def attach(self, gui):
-        super(LassoMixin, self).attach(gui)
+        super().attach(gui)
         connect(self.on_request_split)

@@ -1,13 +1,13 @@
-from pathlib import Path
 import re
+from pathlib import Path
+
+from phylib.utils.testing import captured_output
 
 from phy.apps.base import BaseController
 from phy.cluster import views
 from phy.cluster.supervisor import ActionCreator
-from phy.gui.actions import _show_shortcuts, _show_snippets
 from phy.gui import GUI
-from phylib.utils.testing import captured_output
-
+from phy.gui.actions import _show_shortcuts, _show_snippets
 
 # Get a mapping view class : list of keyboard shortcuts
 
@@ -16,11 +16,17 @@ view_classes = [getattr(views, name) for name in view_names]
 
 
 def _get_shortcuts(cls):
+    shortcuts = cls.default_shortcuts.copy()
+    # Keep generated documentation platform-independent. Qt maps Meta to the
+    # physical Control key on macOS, but users should still read Control+Space
+    # in the reference; the platform note explains the implementation detail.
+    if cls is ActionCreator:
+        shortcuts['select_first_similar'] = 'ctrl+space'
     with captured_output() as (stdout, stderr):
         print(cls.__name__)
         print('-' * len(cls.__name__))
         print()
-        _show_shortcuts(cls.default_shortcuts)
+        _show_shortcuts(shortcuts)
         _show_snippets(cls.default_snippets)
     return stdout.getvalue()
 
@@ -29,7 +35,7 @@ view_shortcuts = {}
 for cls in view_classes:
     s = _get_shortcuts(cls)
     if '-' in s:
-        s = s[s.index('-') - 1:]
+        s = s[s.index('-') - 1 :]
     view_shortcuts[cls.__name__] = s
 
 
@@ -46,7 +52,7 @@ for file in files:
         j = m.end(2)
         contents = contents[:i] + shortcuts + contents[j:]
         file.write_text(contents)
-        print("Inserted shortcuts for %s in %s." % (view_name, file))
+        print(f'Inserted shortcuts for {view_name} in {file}.')
 
 
 # All shortcuts
@@ -55,8 +61,11 @@ base_shortcuts = _get_shortcuts(BaseController)
 gui_shortcuts = _get_shortcuts(GUI)
 
 all_shortcuts = (
-    supervisor_shortcuts + base_shortcuts + gui_shortcuts +
-    ''.join(_get_shortcuts(cls) for cls in view_classes))
+    supervisor_shortcuts
+    + base_shortcuts
+    + gui_shortcuts
+    + ''.join(_get_shortcuts(cls) for cls in view_classes)
+)
 
 pattern = re.compile(r'```text\nAll keyboard shortcuts\n\n([^`]+)\n```')
 shortcuts_file = docs_dir / 'shortcuts.md'
@@ -66,4 +75,4 @@ i = m.start(1)
 j = m.end(1)
 contents = contents[:i] + all_shortcuts + contents[j:]
 shortcuts_file.write_text(contents)
-print("Inserted all shortcuts in %s." % shortcuts_file)
+print(f'Inserted all shortcuts in {shortcuts_file}.')

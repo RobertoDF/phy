@@ -1,0 +1,201 @@
+# Maintainer release workflow
+
+This page is for maintainers preparing TestPyPI or PyPI releases. It is not part of the
+user-facing release notes.
+
+## Maintain the changelog
+
+`docs/changelog.md` is the canonical version-by-version record of user-visible
+changes. Keep its first section titled `Unreleased — <development version>`,
+where the development version matches `pyproject.toml` and
+`phy/__init__.py`.
+
+Every pull request with a user-visible change should add a concise entry under
+`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security` in the
+unreleased section. Describe the effect on users rather than listing commits
+or test changes. Link an issue or pull request when it gives useful context.
+Pure tests, refactors, formatting, and other internal changes do not need
+separate entries.
+
+When preparing a release:
+
+1. Review the unreleased entries for completeness, accuracy, and duplicates.
+2. Replace the unreleased heading with the final version and release date.
+3. Add a fresh unreleased section for the next development version.
+4. Update the comparison links at the bottom of `docs/changelog.md`.
+5. Verify that the package version, changelog heading, release notes, tag, and
+   built artifacts all agree.
+
+## Local release smoke test
+
+The repository contains a local packaging smoke test that mirrors the end-user install flow in an
+isolated virtual environment and uses the small template dataset from `../phy-data/template/`.
+
+Run this before upload to validate the built wheel:
+
+```bash
+make smoke-local
+make open-local
+```
+
+`make smoke-local` builds the wheel, creates `.release-smoke/local`, installs `phy` from
+the local wheel into that fresh environment, checks imports and CLI entry points, and runs:
+
+```bash
+phy template-describe ../phy-data/template/params.py
+```
+
+`make open-local` launches the GUI from that isolated environment so that you can confirm
+the dataset opens correctly.
+
+After upload to TestPyPI or PyPI, validate the published package in another fresh environment:
+
+```bash
+make smoke-pypi
+make open-pypi
+```
+
+For TestPyPI, use:
+
+```bash
+make smoke-test
+make open-test
+```
+
+`smoke-pypi` and `open-pypi` default to the version from `pyproject.toml`.
+`smoke-test` and `open-test` default to the recorded latest TestPyPI dev build.
+You can override either with `SMOKE_VERSION=<version>`.
+
+This validates the intended user path: a plain install in a fresh environment, followed by opening
+a dataset with `phy template-gui`.
+
+## Disposable TestPyPI dev releases
+
+TestPyPI does not let you overwrite an existing file for the same version, so the repository
+includes a disposable dev-release workflow around the current checked-in release candidate version.
+
+Before publishing, provide a TestPyPI API token. Username/password uploads are rejected by
+TestPyPI. The helper accepts `TESTPYPI_TOKEN`, `TEST_PYPI_TOKEN`, or `UV_PUBLISH_TOKEN`, and also
+falls back to `~/.pypirc` under `[testpypi]` when it contains:
+
+```bash
+username = __token__
+password = pypi-...
+```
+
+Run:
+
+```bash
+make publish-test
+```
+
+This command:
+
+* reads the current version from `pyproject.toml` (for example `2.1.0rc1`)
+* queries TestPyPI for existing `2.1.0rc1.devN` releases
+* picks the next free version such as `2.1.0rc1.dev3`
+* creates a temporary staged copy of the repository
+* updates the version in that temporary copy only
+* builds and publishes that disposable version to TestPyPI
+* records the published version in `.release-smoke/latest-testpypi-version.txt`
+
+Your working tree keeps the original final candidate version unchanged.
+
+After publishing the disposable TestPyPI build, validate exactly that uploaded version with:
+
+```bash
+make smoke-test
+make open-test
+```
+
+You can print the recorded version directly with:
+
+```bash
+make version-test
+```
+
+## Final PyPI publish
+
+Once the disposable TestPyPI builds have been validated on your different operating systems and you
+are ready to publish the exact checked-in version from `pyproject.toml`, run:
+
+The final publish helper accepts `PYPI_TOKEN` or `UV_PUBLISH_TOKEN`, and also falls back to
+`~/.pypirc` under `[pypi]` with:
+
+```bash
+username = __token__
+password = pypi-...
+```
+
+Then run:
+
+```bash
+make publish-pypi
+```
+
+This target refuses to publish if the checked-in version still contains `.dev`.
+
+## Typical RC release checklist
+
+For a normal release-candidate cycle, the usual command sequence is:
+
+```bash
+# 1. Local code and packaging checks
+make test-fast
+make build
+make smoke-local
+
+# 2. Publish a disposable TestPyPI build for this RC line
+make publish-test
+
+# 3. Verify that uploaded TestPyPI build on this machine
+make smoke-test
+make open-test
+
+# 4. Repeat step 3 on your other OS machines
+make version-test
+# then on the other machine, after recording that version locally:
+make smoke-test
+make open-test
+
+# 5. Once everything is green, publish the checked-in RC version to real PyPI
+make publish-pypi
+
+# 6. Verify the real PyPI release
+make smoke-pypi
+make open-pypi
+```
+
+If a TestPyPI upload fails validation, fix the issue locally and run
+`make publish-test` again. It will automatically choose the next free `.devN`
+version without changing the checked-in RC version.
+
+If another machine does not yet have `.release-smoke/latest-testpypi-version.txt`, you can still
+fall back to:
+
+```bash
+make smoke-test SMOKE_VERSION=<version>
+make open-test SMOKE_VERSION=<version>
+```
+
+## Post-release checklist
+
+After the final PyPI upload succeeds:
+
+1. Confirm the final changelog section, date, comparison links, and package
+   version agree.
+2. Confirm the PyPI JSON index lists both the wheel and source distribution, and verify their
+   SHA-256 hashes against the files built from the release tag.
+3. Install the exact version from PyPI in a fresh environment with `make smoke-pypi
+   SMOKE_VERSION=<version>` and complete the GUI check with `make open-pypi
+   SMOKE_VERSION=<version>`.
+4. Create a non-prerelease GitHub release from the existing annotated tag. Attach the exact wheel
+   and source distribution already verified against PyPI; do not rebuild them.
+5. Verify the documentation build for the default branch and check the live release notes,
+   README badges, PyPI page, and GitHub release links.
+6. Publish the prepared community announcement only after PyPI, GitHub, and the documentation are
+   live.
+7. Close or update the release milestone. Keep the release branch until all public artifacts have
+   been checked, then remove it only with maintainer approval.
+8. Make any development-version bump and fresh unreleased changelog section
+   on the default branch in a separate pull request.

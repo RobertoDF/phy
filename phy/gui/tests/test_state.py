@@ -1,39 +1,40 @@
-# -*- coding: utf-8 -*-
-
 """Test gui."""
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Imports
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 import logging
 import os
 import shutil
 
-from ..state import GUIState, _gui_state_path, _get_default_state_path
 from phylib.utils import Bunch, load_json, save_json
+
+from ..state import GUIState, _get_default_state_path, _gui_state_path
 
 logger = logging.getLogger(__name__)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Test GUI state
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-class MyClass(object):
+
+class MyClass:
     pass
 
 
 def test_get_default_state_path():
     assert str(_get_default_state_path(MyClass())).endswith(
-        os.sep.join(('gui', 'tests', 'static', 'state.json')))
+        os.sep.join(('gui', 'tests', 'static', 'state.json'))
+    )
 
 
 def test_gui_state_view_1(tempdir):
     view = Bunch(name='MyView0')
     path = _gui_state_path('GUI', tempdir)
     state = GUIState(path)
-    state.update_view_state(view, dict(hello='world'))
+    state.update_view_state(view, {'hello': 'world'})
     assert not state.get_view_state(Bunch(name='MyView'))
     assert not state.get_view_state(Bunch(name='MyView (1)'))
     assert state.get_view_state(view) == Bunch(hello='world')
@@ -44,7 +45,7 @@ def test_gui_state_view_1(tempdir):
     shutil.copy(state._path, default_path)
     state._path.unlink()
 
-    logger.info("Create new GUI state.")
+    logger.info('Create new GUI state.')
     # The default state.json should be automatically copied and loaded.
     state = GUIState(path, default_state_path=default_path)
     assert state.MyView0.hello == 'world'
@@ -88,3 +89,39 @@ def test_gui_state_view_3(tempdir):
     data_1 = {'a': {'b': 3, 'c': 3}}
     assert state == data_1
     assert state._local_data == {'a': {'b': 3}}
+
+
+def test_gui_state_view_local_attributes_do_not_leak_from_global_state(tempdir):
+    global_path = tempdir / 'global/state.json'
+    local_path = tempdir / 'local/state.json'
+    view = Bunch(name='FiringRateView', local_state_attrs=('x_max',))
+    save_json(
+        global_path,
+        {'FiringRateView': {'n_bins': 200, 'x_max': 12.0}},
+    )
+
+    state = GUIState(global_path, local_path=local_path)
+    state.add_local_keys(['FiringRateView.x_max'])
+
+    assert state.get_view_state(view) == {'n_bins': 200}
+
+
+def test_gui_state_view_loads_and_updates_local_attributes(tempdir):
+    global_path = tempdir / 'global/state.json'
+    local_path = tempdir / 'local/state.json'
+    view = Bunch(name='FiringRateView', local_state_attrs=('x_max',))
+    save_json(
+        global_path,
+        {'FiringRateView': {'n_bins': 200, 'x_max': 12.0}},
+    )
+    save_json(local_path, {'FiringRateView': {'x_max': 30.0}})
+
+    state = GUIState(global_path, local_path=local_path)
+    state.add_local_keys(['FiringRateView.x_max'])
+    assert state.get_view_state(view) == {'n_bins': 200, 'x_max': 30.0}
+
+    state.update_view_state(view, {'n_bins': 300, 'x_max': 40.0})
+    assert state.get_view_state(view) == {'n_bins': 300, 'x_max': 40.0}
+    state.save()
+    assert load_json(global_path) == {'FiringRateView': {'n_bins': 300}}
+    assert load_json(local_path) == {'FiringRateView': {'x_max': 40.0}}
